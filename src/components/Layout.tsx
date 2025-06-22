@@ -125,9 +125,9 @@ const Layout = () => {
   );
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gray-50 relative">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0">
+      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:z-50">
         <div className="flex flex-col flex-grow pt-5 bg-white overflow-y-auto border-r shadow-sm">
           <div className="flex items-center flex-shrink-0 px-4">
             <h1 className="text-xl font-bold text-gray-900">Interfast Media</h1>
@@ -141,9 +141,9 @@ const Layout = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 lg:ml-64">
+      <div className="flex-1 lg:ml-64 w-full overflow-x-auto">
         {/* Mobile Header */}
-        <div className="lg:hidden flex items-center justify-between p-3 sm:p-4 bg-white border-b shadow-sm">
+        <div className="lg:hidden flex items-center justify-between p-3 sm:p-4 bg-white border-b shadow-sm sticky top-0 z-50">
           <h1 className="text-lg sm:text-xl font-bold text-gray-900">Interfast Media</h1>
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
