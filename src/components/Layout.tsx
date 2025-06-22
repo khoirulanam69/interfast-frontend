@@ -141,7 +141,7 @@ const Layout = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1">
+      <div className="flex-1 lg:ml-64">
         {/* Mobile Header */}
         <div className="lg:hidden flex items-center justify-between p-3 sm:p-4 bg-white border-b shadow-sm">
           <h1 className="text-lg sm:text-xl font-bold text-gray-900">Interfast Media</h1>
@@ -152,15 +152,26 @@ const Layout = () => {
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-64">
-              <NavItems onItemClick={() => setIsOpen(false)} />
+              <div className="flex flex-col h-full">
+                <div className="flex items-center mb-8">
+                  <h1 className="text-xl font-bold text-gray-900">Interfast Media</h1>
+                </div>
+                <nav className="flex-1 space-y-1">
+                  <NavItems onItemClick={() => setIsOpen(false)} />
+                </nav>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 ml-64">
-          <Outlet />
-        </div>
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto bg-gray-50">
+          <div className="py-4 sm:py-6">
+            <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+              <Outlet />
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );
