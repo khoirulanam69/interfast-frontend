@@ -141,7 +141,7 @@ const Layout = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1">
         {/* Mobile Header */}
         <div className="lg:hidden flex items-center justify-between p-3 sm:p-4 bg-white border-b shadow-sm">
           <h1 className="text-lg sm:text-xl font-bold text-gray-900">Interfast Media</h1>
@@ -158,7 +158,7 @@ const Layout = () => {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 min-w-0 overflow-x-hidden">
+        <div className="flex-1 ml-64">
           <Outlet />
         </div>
       </div>

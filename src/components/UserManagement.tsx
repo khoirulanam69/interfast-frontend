@@ -574,9 +574,9 @@ Tim Interfast Media`;
           <CardTitle className="text-lg sm:text-xl">Users ({filteredUsers.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto w-full">
+          <div className="overflow-x-auto">
             <div className="min-w-full">
-              <Table className="min-w-full w-full">
+              <Table className="min-w-full">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="min-w-[100px]">NIK</TableHead>
