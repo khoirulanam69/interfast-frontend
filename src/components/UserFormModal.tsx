@@ -136,7 +136,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
       };
 
       if (user) {
-        // Update existing user - DO NOT include username_dial, installation_date, expired_date, user_status
+        // Update existing user - include all fields from form
         const { error } = await supabase
           .from('users')
           .update({
@@ -151,7 +151,9 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
             phone: formData.phone,
             package: formData.package,
             price: formData.price,
-            referred_by: formData.referred_by === 'none' ? null : formData.referred_by
+            referred_by: formData.referred_by === 'none' ? null : formData.referred_by,
+            installation_date: formData.installation_date,
+            username_dial: formData.username_dial
           })
           .eq('id', user.id);
 
@@ -162,7 +164,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
           description: "User updated successfully",
         });
       } else {
-        // Create new user - auto-generate dates and username_dial, set status to Active
+        // Create new user - use form data for installation date and username
         const installationDate = formData.installation_date;
         const expiredDate = generateExpiredDate(installationDate);
         const paymentStatus = shouldSetUnpaid(expiredDate) ? 'Unpaid' : 'Paid';
