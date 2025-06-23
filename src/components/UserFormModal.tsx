@@ -30,7 +30,9 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     phone: '',
     package: 'Interfast Bronze' as 'Interfast Bronze' | 'Interfast Silver' | 'Interfast Gold' | 'Interfast Platinum',
     price: 100000,
-    referred_by: null as string | null
+    referred_by: null as string | null,
+    installation_date: new Date().toISOString().split('T')[0], // ← default hari ini
+    username_dial: '', // ← ditambahkan
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -85,7 +87,9 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         phone: user.phone || '',
         package: user.package || 'Interfast Bronze',
         price: user.price || 100000,
-        referred_by: user.referred_by || null
+        referred_by: user.referred_by || null,
+        installation_date: user.installation_date || new Date().toISOString().split('T')[0],
+        username_dial: user.username_dial || '',
       });
     } else {
       // Reset form for new user
@@ -101,7 +105,9 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         phone: '',
         package: 'Interfast Bronze',
         price: 100000,
-        referred_by: null
+        referred_by: null,
+        installation_date: new Date().toISOString().split('T')[0],
+        username_dial: '',
       });
     }
   }, [user]);
@@ -124,7 +130,9 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         phone: formData.phone,
         package: formData.package,
         price: formData.price,
-        referred_by: formData.referred_by === 'none' ? null : formData.referred_by
+        referred_by: formData.referred_by === 'none' ? null : formData.referred_by,
+        installation_date: formData.installation_date,
+        username_dial: formData.username_dial,
       };
 
       if (user) {
@@ -302,6 +310,27 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
                 type="number"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="installation_date">Installation Date</Label>
+              <Input
+                id="installation_date"
+                type="date"
+                value={formData.installation_date}
+                onChange={(e) => setFormData({ ...formData, installation_date: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="username_dial">Username Dial</Label>
+              <Input
+                id="username_dial"
+                value={formData.username_dial}
+                onChange={(e) => setFormData({ ...formData, username_dial: e.target.value })}
                 required
               />
             </div>
