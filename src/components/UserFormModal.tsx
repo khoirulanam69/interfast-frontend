@@ -32,7 +32,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     price: 100000,
     referred_by: null as string | null,
     installation_date: new Date().toISOString().split('T')[0], // ← default hari ini
-    username_dial: '', // ← ditambahkan
+    expired_date: new Date().toISOString().split('T')[0], // ← default hari ini
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -89,7 +89,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         price: user.price || 100000,
         referred_by: user.referred_by || null,
         installation_date: user.installation_date || new Date().toISOString().split('T')[0],
-        username_dial: user.username_dial || '',
+        expired_date: user.expired_date || new Date().toISOString().split('T')[0],
       });
     } else {
       // Reset form for new user
@@ -107,7 +107,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         price: 100000,
         referred_by: null,
         installation_date: new Date().toISOString().split('T')[0],
-        username_dial: '',
+        expired_date: new Date().toISOString().split('T')[0],
       });
     }
   }, [user]);
@@ -132,7 +132,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         price: formData.price,
         referred_by: formData.referred_by === 'none' ? null : formData.referred_by,
         installation_date: formData.installation_date,
-        username_dial: formData.username_dial,
+        expired_date: formData.expired_date,
       };
 
       if (user) {
@@ -153,7 +153,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
             price: formData.price,
             referred_by: formData.referred_by === 'none' ? null : formData.referred_by,
             installation_date: formData.installation_date,
-            username_dial: formData.username_dial
+            expired_date: formData.expired_date
           })
           .eq('id', user.id);
 
@@ -188,7 +188,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
             expired_date: expiredDate,
             payment_status: paymentStatus,
             user_status: 'Active',
-            username_dial: formData.username_dial
+            username_dial: ''
           });
 
         if (error) throw error;
@@ -352,13 +352,18 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
             </div>
 
             <div>
-              <Label htmlFor="username_dial">Username Dial</Label>
+              <Label htmlFor="expired_date">Expired Date</Label>
               <Input
-                id="username_dial"
-                value={formData.username_dial}
-                onChange={(e) => setFormData({ ...formData, username_dial: e.target.value })}
+                id="expired_date"
+                type="date"
+                value={formData.expired_date}
+                onChange={(e) => setFormData({ ...formData, expired_date: e.target.value })}
                 required
               />
+            </div>
+
+            <div>
+
             </div>
             
             <div className="md:col-span-2">
