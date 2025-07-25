@@ -1,100 +1,99 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { Users, DollarSign, AlertTriangle, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Users, DollarSign, Percent, TrendingUp } from 'lucide-react';
+import { useUserStatusUpdater } from '@/hooks/useUserStatusUpdater';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
-    totalRevenue: 0,
     totalUsers: 0,
-    totalDiscounts: 0,
-    userGrowth: [],
-    revenueGrowth: []
+    activeUsers: 0,
+    inactiveUsers: 0,
+    totalRevenue: 0,
   });
+  const [loading, setLoading] = useState(true);
+
+  // Use the status updater hook
+  useUserStatusUpdater();
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
-    try {
-      // Update current month analytics
-      await supabase.rpc('update_monthly_analytics');
-      
-      // Fetch analytics data
-      const { data: analytics } = await supabase
-        .from('analytics')
-        .select('*')
-        .order('year', { ascending: true })
-        .order('month', { ascending: true });
-
-      // Fetch current stats
-      const { data: users } = await supabase
-        .from('users')
-        .select('*');
-
-      if (users) {
-        const activeUsers = users.filter(u => u.user_status === 'Active');
-        const paidUsers = users.filter(u => u.payment_status === 'Paid' && u.user_status === 'Active');
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
         
-        // Calculate gross revenue
-        const grossRevenue = paidUsers.reduce((sum, user) => sum + user.price, 0);
-        
-        // Calculate total discounts
-        let totalDiscounts = 0;
-        for (const user of activeUsers) {
-          const referrals = users.filter(u => u.referred_by === user.id && u.user_status === 'Active');
-          totalDiscounts += referrals.length * 10000;
+        // Fetch all users
+        const { data: users, error } = await supabase
+          .from('users')
+          .select('user_status, price, payment_status');
+
+        if (error) {
+          console.error('Error fetching users:', error);
+          return;
         }
 
-        // Calculate net revenue (gross revenue - discounts)
-        const netRevenue = grossRevenue - totalDiscounts;
+        if (!users) {
+          setStats({
+            totalUsers: 0,
+            activeUsers: 0,
+            inactiveUsers: 0,
+            totalRevenue: 0,
+          });
+          return;
+        }
+
+        const totalUsers = users.length;
+        const activeUsers = users.filter(user => user.user_status === 'Active').length;
+        const inactiveUsers = users.filter(user => user.user_status === 'Inactive').length;
+        const totalRevenue = users
+          .filter(user => user.user_status === 'Active' && user.payment_status === 'Paid')
+          .reduce((sum, user) => sum + (user.price || 0), 0);
 
         setStats({
-          totalRevenue: netRevenue, // Now shows net revenue after discounts
-          totalUsers: activeUsers.length,
-          totalDiscounts,
-          userGrowth: analytics?.map(a => ({
-            month: `${a.month}/${a.year}`,
-            users: a.total_users
-          })) || [],
-          revenueGrowth: analytics?.map(a => ({
-            month: `${a.month}/${a.year}`,
-            revenue: a.total_revenue
-          })) || []
+          totalUsers,
+          activeUsers,
+          inactiveUsers,
+          totalRevenue,
         });
+      } catch (error) {
+        console.error('Error in fetchStats:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    }
-  };
+    };
+
+    fetchStats();
+
+    // Refresh stats every 5 minutes
+    const interval = setInterval(fetchStats, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
       currency: 'IDR',
-      minimumFractionDigits: 0
+      minimumFractionDigits: 0,
     }).format(amount);
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">Loading dashboard...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-      
-      {/* Stats Cards */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+        <p className="text-gray-600">Welcome to Interfast Media Control Panel</p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalRevenue)}</div>
-          </CardContent>
-        </Card>
-        
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -102,68 +101,86 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalUsers}</div>
+            <p className="text-xs text-muted-foreground">All registered users</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Discounts</CardTitle>
-            <Percent className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Active Users</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(stats.totalDiscounts)}</div>
+            <div className="text-2xl font-bold text-green-600">{stats.activeUsers}</div>
+            <p className="text-xs text-muted-foreground">Currently active</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Inactive Users</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.userGrowth.length > 1 
-                ? `${((stats.userGrowth[stats.userGrowth.length - 1]?.users - stats.userGrowth[stats.userGrowth.length - 2]?.users) || 0)}%`
-                : '0%'
-              }
+            <div className="text-2xl font-bold text-red-600">{stats.inactiveUsers}</div>
+            <p className="text-xs text-muted-foreground">Need attention</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {formatCurrency(stats.totalRevenue)}
             </div>
+            <p className="text-xs text-muted-foreground">Monthly revenue</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>User Growth per Month</CardTitle>
+            <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stats.userGrowth}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="users" fill="#3b82f6" />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="space-y-4">
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-green-500 rounded-full mr-3"></div>
+                <div className="text-sm">
+                  <p className="font-medium">System Status: Online</p>
+                  <p className="text-gray-500">All services running normally</p>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                <div className="text-sm">
+                  <p className="font-medium">User Status Updated</p>
+                  <p className="text-gray-500">Automatic status check completed</p>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
-            <CardTitle>Revenue Growth per Month</CardTitle>
+            <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={stats.revenueGrowth}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+            <div className="space-y-2">
+              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-md">
+                <p className="font-medium">Add New User</p>
+                <p className="text-sm text-gray-500">Create a new customer account</p>
+              </button>
+              <button className="w-full text-left p-2 hover:bg-gray-50 rounded-md">
+                <p className="font-medium">View Reports</p>
+                <p className="text-sm text-gray-500">Check monthly analytics</p>
+              </button>
+            </div>
           </CardContent>
         </Card>
       </div>

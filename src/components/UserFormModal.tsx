@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -31,8 +31,8 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     package: 'Interfast Bronze' as 'Interfast Bronze' | 'Interfast Silver' | 'Interfast Gold' | 'Interfast Platinum',
     price: 100000,
     referred_by: null as string | null,
-    installation_date: new Date().toISOString().split('T')[0], // ← default hari ini
-    expired_date: new Date().toISOString().split('T')[0], // ← default hari ini
+    installation_date: '',
+    expired_date: ''
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -88,11 +88,16 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         package: user.package || 'Interfast Bronze',
         price: user.price || 100000,
         referred_by: user.referred_by || null,
-        installation_date: user.installation_date || new Date().toISOString().split('T')[0],
-        expired_date: user.expired_date || new Date().toISOString().split('T')[0],
+        installation_date: user.installation_date || '',
+        expired_date: user.expired_date || ''
       });
     } else {
-      // Reset form for new user
+      // Reset form for new user with current date
+      const today = new Date().toISOString().split('T')[0];
+      const expiredDate = new Date();
+      expiredDate.setDate(expiredDate.getDate() + 30);
+      const expiredDateString = expiredDate.toISOString().split('T')[0];
+      
       setFormData({
         nik: '',
         name: '',
@@ -106,8 +111,8 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         package: 'Interfast Bronze',
         price: 100000,
         referred_by: null,
-        installation_date: new Date().toISOString().split('T')[0],
-        expired_date: new Date().toISOString().split('T')[0],
+        installation_date: today,
+        expired_date: expiredDateString
       });
     }
   }, [user]);
@@ -132,29 +137,14 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         price: formData.price,
         referred_by: formData.referred_by === 'none' ? null : formData.referred_by,
         installation_date: formData.installation_date,
-        expired_date: formData.expired_date,
+        expired_date: formData.expired_date
       };
 
       if (user) {
-        // Update existing user - include all fields from form
+        // Update existing user
         const { error } = await supabase
           .from('users')
-          .update({
-            nik: formData.nik,
-            name: formData.name,
-            address: formData.address,
-            rt_rw: formData.rt_rw,
-            village: formData.village,
-            city: formData.city,
-            province: formData.province,
-            country: formData.country,
-            phone: formData.phone,
-            package: formData.package,
-            price: formData.price,
-            referred_by: formData.referred_by === 'none' ? null : formData.referred_by,
-            installation_date: formData.installation_date,
-            expired_date: formData.expired_date
-          })
+          .update(dataToSubmit)
           .eq('id', user.id);
 
         if (error) throw error;
@@ -164,28 +154,13 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
           description: "User updated successfully",
         });
       } else {
-        // Create new user - use form data for installation date and username
-        const installationDate = formData.installation_date;
-        const expiredDate = generateExpiredDate(installationDate);
-        const paymentStatus = shouldSetUnpaid(expiredDate) ? 'Unpaid' : 'Paid';
+        // Create new user
+        const paymentStatus = shouldSetUnpaid(formData.expired_date) ? 'Unpaid' : 'Paid';
 
         const { error } = await supabase
           .from('users')
           .insert({
-            nik: formData.nik,
-            name: formData.name,
-            address: formData.address,
-            rt_rw: formData.rt_rw,
-            village: formData.village,
-            city: formData.city,
-            province: formData.province,
-            country: formData.country,
-            phone: formData.phone,
-            package: formData.package,
-            price: formData.price,
-            referred_by: formData.referred_by === 'none' ? null : formData.referred_by,
-            installation_date: installationDate,
-            expired_date: expiredDate,
+            ...dataToSubmit,
             payment_status: paymentStatus,
             user_status: 'Active',
             username_dial: ''
@@ -229,6 +204,9 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{user ? 'Edit User' : 'Add New User'}</DialogTitle>
+          <DialogDescription>
+            {user ? 'Update user information below.' : 'Fill in the information to create a new user.'}
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -360,10 +338,6 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
                 onChange={(e) => setFormData({ ...formData, expired_date: e.target.value })}
                 required
               />
-            </div>
-
-            <div>
-
             </div>
             
             <div className="md:col-span-2">

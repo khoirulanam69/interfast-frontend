@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { mikrotikService } from '@/services/mikrotikService';
 import { generateUniqueUsernameDial } from '@/utils/usernameGenerator';
 import { useUserStatusUpdater } from '@/hooks/useUserStatusUpdater';
+import { useNavigate } from 'react-router-dom';
 import UserFormModal from './UserFormModal';
 import {
   AlertDialog,
@@ -35,6 +36,7 @@ const UserManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Use the auto status updater hook
   useUserStatusUpdater();
@@ -101,18 +103,30 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
+      console.log('Fetching users from Supabase...');
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: false });
 
+      console.log('Supabase response:', { data, error });
+
       if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        console.log('No users found in database');
+        toast({
+          title: "No Data",
+          description: "No users found in the database. Click 'Add User' to create your first user.",
+        });
+      }
+      
       setUsers(data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch users",
+        description: "Failed to fetch users from database",
         variant: "destructive",
       });
       // Auto dismiss after 3 seconds
@@ -505,6 +519,10 @@ Tim Interfast Media`;
     }).format(amount);
   };
 
+  const handleNikClick = (user: any) => {
+    navigate(`/users/${user.nik}`);
+  };
+
   return (
     <div className="w-full max-w-none space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -515,220 +533,266 @@ Tim Interfast Media`;
         </Button>
       </div>
 
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Search and Filters</CardTitle>
-        </CardHeader>
-        <CardContent className="w-full">
-          <div className="space-y-4">
-            {/* Search bar at the top */}
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Search users..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full"
-              />
+      {users.length === 0 && (
+        <Card className="w-full">
+          <CardContent className="flex flex-col items-center justify-center py-8">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold mb-2">No Users Found</h3>
+              <p className="text-gray-600 mb-4">Get started by adding your first user to the system.</p>
+              <Button onClick={() => { setEditingUser(null); setIsModalOpen(true); }}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Your First User
+              </Button>
             </div>
-            
-            {/* Filters below search */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-              >
-                <option value="">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-                <option value="Terminate">Terminate</option>
-              </select>
-              <select
-                value={filterPackage}
-                onChange={(e) => setFilterPackage(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-              >
-                <option value="">All Packages</option>
-                <option value="Interfast Bronze">Bronze</option>
-                <option value="Interfast Silver">Silver</option>
-                <option value="Interfast Gold">Gold</option>
-                <option value="Interfast Platinum">Platinum</option>
-              </select>
-              <select
-                value={filterPayment}
-                onChange={(e) => setFilterPayment(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-              >
-                <option value="">All Payment Status</option>
-                <option value="Paid">Paid</option>
-                <option value="Unpaid">Unpaid</option>
-              </select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl">Users ({filteredUsers.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="w-full p-0">
-          <div className="w-full overflow-x-auto">
-            <div className="inline-block min-w-full align-middle">
-              <Table className="min-w-[1400px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[100px]">NIK</TableHead>
-                    <TableHead className="min-w-[120px]">Name</TableHead>
-                    <TableHead className="min-w-[100px]">Phone</TableHead>
-                    <TableHead className="min-w-[150px]">Address</TableHead>
-                    <TableHead className="min-w-[100px]">Package</TableHead>
-                    <TableHead className="min-w-[80px]">Price</TableHead>
-                    <TableHead className="min-w-[80px]">Discount</TableHead>
-                    <TableHead className="min-w-[80px]">Final Price</TableHead>
-                    <TableHead className="min-w-[80px]">Status</TableHead>
-                    <TableHead className="min-w-[80px]">Payment</TableHead>
-                    <TableHead className="min-w-[100px]">Installation Date</TableHead>
-                    <TableHead className="min-w-[100px]">
-                      <Button variant="ghost" onClick={toggleSort} className="h-auto p-0 font-medium">
-                        Expired Date {getSortIcon()}
-                      </Button>
-                    </TableHead>
-                    <TableHead className="min-w-[120px]">Username Dial</TableHead>
-                    <TableHead className="min-w-[200px]">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
+      {users.length > 0 && (
+        <>
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl">Search and Filters</CardTitle>
+            </CardHeader>
+            <CardContent className="w-full">
+              <div className="space-y-4">
+                {/* Search bar at the top */}
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search users..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-full"
+                  />
+                </div>
+                
+                {/* Filters below search */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                  >
+                    <option value="">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                    <option value="Terminate">Terminate</option>
+                  </select>
+                  <select
+                    value={filterPackage}
+                    onChange={(e) => setFilterPackage(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                  >
+                    <option value="">All Packages</option>
+                    <option value="Interfast Bronze">Bronze</option>
+                    <option value="Interfast Silver">Silver</option>
+                    <option value="Interfast Gold">Gold</option>
+                    <option value="Interfast Platinum">Platinum</option>
+                  </select>
+                  <select
+                    value={filterPayment}
+                    onChange={(e) => setFilterPayment(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                  >
+                    <option value="">All Payment Status</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Unpaid">Unpaid</option>
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-                <TableBody>
-                  {filteredUsers.map((user) => {
-                    const discount = calculateDiscount(user.id);
-                    const finalPrice = calculateFinalPrice(user);
-
-                    return (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-mono text-xs">{user.nik}</TableCell>
-                        <TableCell className="text-sm truncate">{user.name}</TableCell>
-                        <TableCell className="text-xs">{user.phone}</TableCell>
-                        <TableCell>
-                          <div className="max-w-[150px] truncate text-xs" title={`${user.address}, RT/RW: ${user.rt_rw}, ${user.village}, ${user.city}, ${user.province}, ${user.country}`}>
-                            {`${user.address}, RT/RW: ${user.rt_rw}, ${user.village}, ${user.city}, ${user.province}, ${user.country}`}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs">{user.package}</TableCell>
-                        <TableCell className="text-xs">{formatCurrency(user.price)}</TableCell>
-                        <TableCell className="text-xs">{formatCurrency(discount)}</TableCell>
-                        <TableCell className="text-xs font-medium">{formatCurrency(finalPrice)}</TableCell>
-                        <TableCell>
-                          <select
-                            value={user.user_status}
-                            onChange={(e) => handleStatusChange(user, e.target.value as 'Active' | 'Inactive' | 'Terminate')}
-                            className="px-1 py-1 text-xs border rounded w-full"
-                          >
-                            <option value="Active">Active</option>
-                            <option value="Inactive">Inactive</option>
-                            <option value="Terminate">Terminate</option>
-                          </select>
-                        </TableCell>
-                        <TableCell>{getPaymentBadge(user.payment_status)}</TableCell>
-                        <TableCell className="text-xs">{formatDate(user.installation_date)}</TableCell>
-                        <TableCell className="text-xs">{formatDate(user.expired_date)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <span className="font-mono text-xs truncate max-w-[100px]" title={user.username_dial}>{user.username_dial}</span>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                                  <RefreshCw className="h-3 w-3" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Regenerate Username Dial</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to regenerate the username dial for {user.name}?
-                                    This will update both the database and MikroTik PPP secret with new credentials.
-                                    Current username: {user.username_dial}
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleRegenerateUsername(user)}>
-                                    Regenerate
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            <Button variant="outline" size="sm" onClick={() => { setEditingUser(user); setIsModalOpen(true); }} className="h-7 w-7 p-0">
-                              <Edit className="h-3 w-3" />
-                            </Button>
-
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-7 w-7 p-0">
-                                  <Calendar className="h-3 w-3" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Extend Subscription</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to extend the subscription for {user.name}?
-                                    The expired date will be changed from {formatDate(user.expired_date)} to {formatDate(new Date(new Date(user.expired_date).setMonth(new Date(user.expired_date).getMonth() + 1)).toISOString().split('T')[0])}.
-                                    User status will be set to Active and payment status will be set to Paid.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleExtendPeriod(user)}>
-                                    Extend Subscription
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-
-                            <Button variant="outline" size="sm" onClick={() => handleSendWhatsApp(user)} className="h-7 w-7 p-0">
-                              <MessageCircle className="h-3 w-3" />
-                            </Button>
-
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="destructive" size="sm" className="h-7 w-7 p-0">
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete User</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete {user.name}?
-                                    This will also remove their PPP secret and disconnect any active connections from MikroTik.
-                                    This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(user.id)}>
-                                    Delete User
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl">Users ({filteredUsers.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="w-full p-0">
+              <div className="w-full overflow-hidden">
+                <div className="overflow-x-auto">
+                  <Table className="w-full">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="min-w-[100px] w-[100px]">NIK</TableHead>
+                        <TableHead className="min-w-[120px] w-[120px]">Name</TableHead>
+                        <TableHead className="min-w-[100px] w-[100px]">Phone</TableHead>
+                        <TableHead className="min-w-[150px] w-[150px]">Address</TableHead>
+                        <TableHead className="min-w-[100px] w-[100px]">Package</TableHead>
+                        <TableHead className="min-w-[80px] w-[80px]">Price</TableHead>
+                        <TableHead className="min-w-[80px] w-[80px]">Discount</TableHead>
+                        <TableHead className="min-w-[80px] w-[80px]">Final Price</TableHead>
+                        <TableHead className="min-w-[80px] w-[80px]">Status</TableHead>
+                        <TableHead className="min-w-[80px] w-[80px]">Payment</TableHead>
+                        <TableHead className="min-w-[100px] w-[100px]">Installation Date</TableHead>
+                        <TableHead className="min-w-[100px] w-[100px]">
+                          <Button variant="ghost" onClick={toggleSort} className="h-auto p-0 font-medium">
+                            Expired Date {getSortIcon()}
+                          </Button>
+                        </TableHead>
+                        <TableHead className="min-w-[120px] w-[120px]">Username Dial</TableHead>
+                        <TableHead className="min-w-[200px] w-[200px]">Actions</TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredUsers.map((user) => {
+                        const discount = calculateDiscount(user.id);
+                        const finalPrice = calculateFinalPrice(user);
+                        
+                        return (
+                          <TableRow key={user.id}>
+                            <TableCell className="font-mono text-xs">
+                              <Button
+                                variant="link"
+                                className="p-0 h-auto font-mono text-xs text-blue-600 hover:text-blue-800"
+                                onClick={() => handleNikClick(user)}
+                              >
+                                {user.nik}
+                              </Button>
+                            </TableCell>
+                            <TableCell>
+                              <div className="font-medium text-sm truncate">{user.name}</div>
+                            </TableCell>
+                            <TableCell className="text-xs">{user.phone}</TableCell>
+                            <TableCell>
+                              <div className="max-w-[150px] truncate text-xs" title={`${user.address}, RT/RW: ${user.rt_rw}, ${user.village}, ${user.city}, ${user.province}, ${user.country}`}>
+                                {`${user.address}, RT/RW: ${user.rt_rw}, ${user.village}, ${user.city}, ${user.province}, ${user.country}`}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs">{user.package}</TableCell>
+                            <TableCell className="text-xs">{formatCurrency(user.price)}</TableCell>
+                            <TableCell className="text-xs">{formatCurrency(discount)}</TableCell>
+                            <TableCell className="text-xs font-medium">{formatCurrency(finalPrice)}</TableCell>
+                            <TableCell>
+                              <select
+                                value={user.user_status}
+                                onChange={(e) => handleStatusChange(user, e.target.value as 'Active' | 'Inactive' | 'Terminate')}
+                                className="px-1 py-1 text-xs border rounded w-full"
+                              >
+                                <option value="Active">Active</option>
+                                <option value="Inactive">Inactive</option>
+                                <option value="Terminate">Terminate</option>
+                              </select>
+                            </TableCell>
+                            <TableCell>{getPaymentBadge(user.payment_status)}</TableCell>
+                            <TableCell className="text-xs">{formatDate(user.installation_date)}</TableCell>
+                            <TableCell className="text-xs">{formatDate(user.expired_date)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1">
+                                <span className="font-mono text-xs truncate max-w-[100px]" title={user.username_dial}>{user.username_dial}</span>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <RefreshCw className="h-3 w-3" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Regenerate Username Dial</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to regenerate the username dial for {user.name}? 
+                                        This will update both the database and MikroTik PPP secret with new credentials.
+                                        Current username: {user.username_dial}
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleRegenerateUsername(user)}>
+                                        Regenerate
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => { setEditingUser(user); setIsModalOpen(true); }}
+                                  className="h-7 w-7 p-0"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="outline" size="sm" className="h-7 w-7 p-0">
+                                      <Calendar className="h-3 w-3" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Extend Subscription</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to extend the subscription for {user.name}? 
+                                        The expired date will be changed from {formatDate(user.expired_date)} to {formatDate(new Date(new Date(user.expired_date).setMonth(new Date(user.expired_date).getMonth() + 1)).toISOString().split('T')[0])}.
+                                        User status will be set to Active and payment status will be set to Paid.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleExtendPeriod(user)}>
+                                        Extend Subscription
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleSendWhatsApp(user)}
+                                  className="h-7 w-7 p-0"
+                                >
+                                  <MessageCircle className="h-3 w-3" />
+                                </Button>
+
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      className="h-7 w-7 p-0"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete User</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Are you sure you want to delete {user.name}? 
+                                        This will also remove their PPP secret and disconnect any active connections from MikroTik.
+                                        This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDelete(user.id)}>
+                                        Delete User
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       <UserFormModal
         isOpen={isModalOpen}

@@ -2,51 +2,38 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  Settings, 
-  Activity,
-  HardDrive,
-  Cpu,
-  RefreshCw,
-  Power,
-  Monitor
-} from 'lucide-react';
+import { RefreshCw, Server, HardDrive, Cpu, MemoryStick, Activity } from 'lucide-react';
 import { mikrotikService } from '@/services/mikrotikService';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { useToast } from '@/hooks/use-toast';
 
 const SystemManagement = () => {
-  const [systemResource, setSystemResource] = useState<any>(null);
-  const [systemIdentity, setSystemIdentity] = useState<any>(null);
+  const [systemInfo, setSystemInfo] = useState<any>(null);
+  const [resourceInfo, setResourceInfo] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [showMockData, setShowMockData] = useState(false);
   const { toast } = useToast();
 
-  const fetchSystemResource = async () => {
+  const fetchSystemInfo = async () => {
     setLoading(true);
     try {
-      const result = await mikrotikService.getSystemResource();
-      if (result.success) {
-        setSystemResource(result.data?.[0] || null);
+      const [identityResult, resourceResult] = await Promise.all([
+        mikrotikService.getSystemIdentity(),
+        mikrotikService.getSystemResource()
+      ]);
+
+      if (identityResult.success && resourceResult.success) {
+        setSystemInfo(identityResult.data);
+        setResourceInfo(resourceResult.data);
+        setShowMockData(false);
       } else {
-        throw new Error(result.message);
+        throw new Error('Failed to fetch system information');
       }
     } catch (error) {
-      console.error('Error fetching system resource:', error);
+      console.error('Error fetching system info:', error);
+      setShowMockData(true);
       toast({
-        title: "Error",
-        description: "Failed to fetch system resource",
+        title: "Connection Issue",
+        description: "Cannot connect to MikroTik. Showing sample data.",
         variant: "destructive",
       });
     } finally {
@@ -54,262 +41,241 @@ const SystemManagement = () => {
     }
   };
 
-  const fetchSystemIdentity = async () => {
-    try {
-      const result = await mikrotikService.getSystemIdentity();
-      if (result.success) {
-        setSystemIdentity(result.data?.[0] || null);
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (error) {
-      console.error('Error fetching system identity:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch system identity",
-        variant: "destructive",
-      });
-    }
+  useEffect(() => {
+    fetchSystemInfo();
+  }, []);
+
+  // Mock data for when API is unavailable
+  const mockSystemInfo = {
+    name: 'MikroTik-Sample',
+    'board-name': 'RB750Gr3',
+    version: '6.49.6 (stable)',
+    'build-time': 'Nov/26/2021 13:12:03',
+    'factory-software': '6.45.9',
+    'free-memory': '134217728',
+    'total-memory': '268435456',
+    'cpu': 'MIPS 1004Kc V2.15',
+    'cpu-count': '4',
+    'cpu-frequency': '716',
+    'cpu-load': '5',
+    uptime: '2w3d04:23:15',
+    'architecture-name': 'mipsbe',
+    'bad-blocks': '0',
+    'writing-blocks-limit': '1311',
+    'free-hdd-space': '104857600',
+    'total-hdd-space': '134217728'
   };
 
-  const handleReboot = async () => {
-    try {
-      const result = await mikrotikService.rebootSystem();
-      if (result.success) {
-        toast({
-          title: "Success",
-          description: "System reboot initiated successfully",
-        });
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (error) {
-      console.error('Error rebooting system:', error);
-      toast({
-        title: "Error",
-        description: "Failed to reboot system",
-        variant: "destructive",
-      });
-    }
+  const mockResourceInfo = {
+    uptime: '2w3d04:23:15',
+    version: '6.49.6 (stable)',
+    'free-memory': '134217728',
+    'total-memory': '268435456',
+    cpu: '5',
+    'free-hdd-space': '104857600',
+    'total-hdd-space': '134217728',
+    'architecture-name': 'mipsbe',
+    'board-name': 'RB750Gr3',
+    platform: 'MikroTik'
   };
+
+  const displaySystemInfo = showMockData ? mockSystemInfo : systemInfo;
+  const displayResourceInfo = showMockData ? mockResourceInfo : resourceInfo;
 
   const formatUptime = (uptime: string) => {
     if (!uptime) return 'N/A';
     return uptime;
   };
 
-  const formatBytes = (bytes: string) => {
-    if (!bytes || bytes === '0') return '0 B';
-    const num = parseInt(bytes);
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(num) / Math.log(1024));
-    return Math.round(num / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+  const formatBytes = (bytes: string | number) => {
+    if (!bytes) return 'N/A';
+    const size = typeof bytes === 'string' ? parseInt(bytes) : bytes;
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let i = 0;
+    let value = size;
+    while (value >= 1024 && i < units.length - 1) {
+      value /= 1024;
+      i++;
+    }
+    return `${value.toFixed(1)} ${units[i]}`;
   };
 
-  const getCPUUsagePercentage = () => {
-    if (!systemResource || !systemResource['cpu-load']) return 0;
-    return parseInt(systemResource['cpu-load']);
+  const getCPUUsagePercentage = (cpuLoad: string | number) => {
+    if (!cpuLoad) return 0;
+    return typeof cpuLoad === 'string' ? parseInt(cpuLoad) : cpuLoad;
   };
 
-  const getMemoryUsagePercentage = () => {
-    if (!systemResource || !systemResource['total-memory'] || !systemResource['free-memory']) return 0;
-    const total = parseInt(systemResource['total-memory']);
-    const free = parseInt(systemResource['free-memory']);
-    const used = total - free;
-    return Math.round((used / total) * 100);
+  const getMemoryUsagePercentage = (free: string | number, total: string | number) => {
+    if (!free || !total) return 0;
+    const freeBytes = typeof free === 'string' ? parseInt(free) : free;
+    const totalBytes = typeof total === 'string' ? parseInt(total) : total;
+    return Math.round(((totalBytes - freeBytes) / totalBytes) * 100);
   };
 
-  const getStorageUsagePercentage = () => {
-    if (!systemResource || !systemResource['total-hdd-space'] || !systemResource['free-hdd-space']) return 0;
-    const total = parseInt(systemResource['total-hdd-space']);
-    const free = parseInt(systemResource['free-hdd-space']);
-    const used = total - free;
-    return Math.round((used / total) * 100);
+  const getStorageUsagePercentage = (free: string | number, total: string | number) => {
+    if (!free || !total) return 0;
+    const freeBytes = typeof free === 'string' ? parseInt(free) : free;
+    const totalBytes = typeof total === 'string' ? parseInt(total) : total;
+    return Math.round(((totalBytes - freeBytes) / totalBytes) * 100);
   };
 
-  useEffect(() => {
-    fetchSystemResource();
-    fetchSystemIdentity();
-  }, []);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p>Loading system information...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* System Identity */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Monitor className="h-5 w-5" />
-              System Identity
-            </CardTitle>
-            <Button 
-              onClick={() => {
-                fetchSystemResource();
-                fetchSystemIdentity();
-              }}
-              disabled={loading}
-              variant="outline"
-              size="sm"
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">System Management</h2>
+        <Button onClick={fetchSystemInfo} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {showMockData && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+          <div className="flex items-center">
+            <Activity className="h-5 w-5 text-yellow-600 mr-2" />
+            <p className="text-yellow-800">
+              <strong>Demo Mode:</strong> Cannot connect to MikroTik backend. Showing sample data.
+            </p>
           </div>
-        </CardHeader>
-        <CardContent>
-          {systemIdentity ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Router Name</p>
-                <p className="font-medium">{systemIdentity.name || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Version</p>
-                <p className="font-medium">{systemResource?.version || 'N/A'}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              No system identity information available
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
-      {/* System Resource */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            System Resources
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">CPU Usage</CardTitle>
+            <Cpu className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {getCPUUsagePercentage(displayResourceInfo?.cpu || '0')}%
             </div>
-          ) : systemResource ? (
-            <div className="space-y-6">
-              {/* CPU Usage */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Cpu className="h-4 w-4" />
-                    <span className="text-sm font-medium">CPU Usage</span>
-                  </div>
-                  <span className="text-sm text-gray-600">{getCPUUsagePercentage()}%</span>
-                </div>
-                <Progress value={getCPUUsagePercentage()} className="w-full" />
-              </div>
+            <p className="text-xs text-muted-foreground">
+              {displaySystemInfo?.['cpu-count'] || 'N/A'} cores at {displaySystemInfo?.['cpu-frequency'] || 'N/A'}MHz
+            </p>
+          </CardContent>
+        </Card>
 
-              {/* Memory Usage */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <HardDrive className="h-4 w-4" />
-                    <span className="text-sm font-medium">Memory Usage</span>
-                  </div>
-                  <span className="text-sm text-gray-600">
-                    {formatBytes(systemResource['total-memory'] || '0')} total
-                  </span>
-                </div>
-                <Progress value={getMemoryUsagePercentage()} className="w-full" />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Used: {formatBytes((parseInt(systemResource['total-memory'] || '0') - parseInt(systemResource['free-memory'] || '0')).toString())}</span>
-                  <span>Free: {formatBytes(systemResource['free-memory'] || '0')}</span>
-                </div>
-              </div>
-
-              {/* Storage Usage */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <HardDrive className="h-4 w-4" />
-                    <span className="text-sm font-medium">Storage Usage</span>
-                  </div>
-                  <span className="text-sm text-gray-600">
-                    {formatBytes(systemResource['total-hdd-space'] || '0')} total
-                  </span>
-                </div>
-                <Progress value={getStorageUsagePercentage()} className="w-full" />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>Used: {formatBytes((parseInt(systemResource['total-hdd-space'] || '0') - parseInt(systemResource['free-hdd-space'] || '0')).toString())}</span>
-                  <span>Free: {formatBytes(systemResource['free-hdd-space'] || '0')}</span>
-                </div>
-              </div>
-
-              {/* System Info Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-600">Uptime</p>
-                  <p className="font-medium">{formatUptime(systemResource.uptime)}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-600">Board Name</p>
-                  <p className="font-medium">{systemResource['board-name'] || 'N/A'}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-600">Architecture</p>
-                  <p className="font-medium">{systemResource['architecture-name'] || 'N/A'}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-600">CPU Count</p>
-                  <p className="font-medium">{systemResource['cpu-count'] || 'N/A'}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-600">CPU Frequency</p>
-                  <p className="font-medium">{systemResource['cpu-frequency'] ? `${systemResource['cpu-frequency']} MHz` : 'N/A'}</p>
-                </div>
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-600">Platform</p>
-                  <p className="font-medium">{systemResource['platform'] || 'N/A'}</p>
-                </div>
-              </div>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Memory Usage</CardTitle>
+            <MemoryStick className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {getMemoryUsagePercentage(
+                displayResourceInfo?.['free-memory'],
+                displayResourceInfo?.['total-memory']
+              )}%
             </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              No system resource information available
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            <p className="text-xs text-muted-foreground">
+              {formatBytes(displayResourceInfo?.['free-memory'] || '0')} free of{' '}
+              {formatBytes(displayResourceInfo?.['total-memory'] || '0')}
+            </p>
+          </CardContent>
+        </Card>
 
-      {/* System Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            System Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4">
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive" className="flex items-center gap-2">
-                  <Power className="h-4 w-4" />
-                  Reboot System
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Reboot System</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to reboot the MikroTik system? This will temporarily disconnect all users and services.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleReboot} className="bg-red-600 hover:bg-red-700">
-                    Reboot Now
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Storage Usage</CardTitle>
+            <HardDrive className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {getStorageUsagePercentage(
+                displayResourceInfo?.['free-hdd-space'],
+                displayResourceInfo?.['total-hdd-space']
+              )}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {formatBytes(displayResourceInfo?.['free-hdd-space'] || '0')} free of{' '}
+              {formatBytes(displayResourceInfo?.['total-hdd-space'] || '0')}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Uptime</CardTitle>
+            <Server className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatUptime(displayResourceInfo?.uptime || 'N/A')}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              System uptime
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>System Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="font-medium">Identity:</div>
+              <div>{displaySystemInfo?.name || 'N/A'}</div>
+              
+              <div className="font-medium">Board:</div>
+              <div>{displaySystemInfo?.['board-name'] || 'N/A'}</div>
+              
+              <div className="font-medium">Version:</div>
+              <div>{displaySystemInfo?.version || 'N/A'}</div>
+              
+              <div className="font-medium">Architecture:</div>
+              <div>{displaySystemInfo?.['architecture-name'] || 'N/A'}</div>
+              
+              <div className="font-medium">CPU:</div>
+              <div>{displaySystemInfo?.cpu || 'N/A'}</div>
+              
+              <div className="font-medium">Build Time:</div>
+              <div>{displaySystemInfo?.['build-time'] || 'N/A'}</div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Resource Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="font-medium">Platform:</div>
+              <div>{displayResourceInfo?.platform || 'MikroTik'}</div>
+              
+              <div className="font-medium">Free Memory:</div>
+              <div>{formatBytes(displayResourceInfo?.['free-memory'] || '0')}</div>
+              
+              <div className="font-medium">Total Memory:</div>
+              <div>{formatBytes(displayResourceInfo?.['total-memory'] || '0')}</div>
+              
+              <div className="font-medium">Free Storage:</div>
+              <div>{formatBytes(displayResourceInfo?.['free-hdd-space'] || '0')}</div>
+              
+              <div className="font-medium">Total Storage:</div>
+              <div>{formatBytes(displayResourceInfo?.['total-hdd-space'] || '0')}</div>
+              
+              <div className="font-medium">Bad Blocks:</div>
+              <div>{displaySystemInfo?.['bad-blocks'] || '0'}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

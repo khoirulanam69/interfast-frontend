@@ -1,11 +1,21 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { mikrotikService } from '@/services/mikrotikService';
 
 export const useUserStatusUpdater = () => {
+  const isRunningRef = useRef(false);
+
   useEffect(() => {
     const updateUserStatuses = async () => {
+      // Prevent multiple simultaneous runs
+      if (isRunningRef.current) {
+        console.log('Status update already running, skipping...');
+        return;
+      }
+
+      isRunningRef.current = true;
+
       try {
         const { data: users, error } = await supabase
           .from('users')
@@ -16,10 +26,17 @@ export const useUserStatusUpdater = () => {
           return;
         }
 
+        if (!users || users.length === 0) {
+          console.log('No users found for status update');
+          return;
+        }
+
         const now = new Date();
         const updates = [];
 
         for (const user of users) {
+          if (!user.expired_date) continue;
+
           const expiredDate = new Date(user.expired_date);
           const daysDiff = Math.ceil((expiredDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
           const monthsDiff = Math.ceil((now.getTime() - expiredDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
@@ -41,7 +58,9 @@ export const useUserStatusUpdater = () => {
             
             // Update MikroTik status
             try {
-              await mikrotikService.updateUserStatus(user.username_dial, 'Inactive');
+              if (user.username_dial) {
+                await mikrotikService.updateUserStatus(user.username_dial, 'Inactive');
+              }
             } catch (error) {
               console.error(`Failed to update MikroTik status for ${user.username_dial}:`, error);
             }
@@ -54,7 +73,9 @@ export const useUserStatusUpdater = () => {
             
             // Update MikroTik status
             try {
-              await mikrotikService.updateUserStatus(user.username_dial, 'Terminate');
+              if (user.username_dial) {
+                await mikrotikService.updateUserStatus(user.username_dial, 'Terminate');
+              }
             } catch (error) {
               console.error(`Failed to update MikroTik status for ${user.username_dial}:`, error);
             }
@@ -86,15 +107,21 @@ export const useUserStatusUpdater = () => {
 
       } catch (error) {
         console.error('Error in user status updater:', error);
+      } finally {
+        isRunningRef.current = false;
       }
     };
 
-    // Run immediately
-    updateUserStatuses();
+    // Run immediately but with a small delay to prevent blocking initial render
+    const initialTimeout = setTimeout(updateUserStatuses, 2000);
 
-    // Run every hour
-    const interval = setInterval(updateUserStatuses, 60 * 60 * 1000);
+    // Run every 2 hours instead of every hour to reduce load
+    const interval = setInterval(updateUserStatuses, 2 * 60 * 60 * 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+      isRunningRef.current = false;
+    };
   }, []);
 };

@@ -101,7 +101,7 @@ export type Database = {
           installation_date: string
           name: string
           nik: string
-          package: Database["public"]["Enums"]["package_type"]
+          package: string
           payment_status: Database["public"]["Enums"]["payment_status"]
           phone: string
           price: number
@@ -123,7 +123,7 @@ export type Database = {
           installation_date?: string
           name: string
           nik: string
-          package?: Database["public"]["Enums"]["package_type"]
+          package?: string
           payment_status?: Database["public"]["Enums"]["payment_status"]
           phone: string
           price?: number
@@ -145,7 +145,7 @@ export type Database = {
           installation_date?: string
           name?: string
           nik?: string
-          package?: Database["public"]["Enums"]["package_type"]
+          package?: string
           payment_status?: Database["public"]["Enums"]["payment_status"]
           phone?: string
           price?: number
