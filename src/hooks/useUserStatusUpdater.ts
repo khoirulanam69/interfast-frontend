@@ -10,7 +10,6 @@ export const useUserStatusUpdater = () => {
     const updateUserStatuses = async () => {
       // Prevent multiple simultaneous runs
       if (isRunningRef.current) {
-        console.log('Status update already running, skipping...');
         return;
       }
 
@@ -22,12 +21,10 @@ export const useUserStatusUpdater = () => {
           .select('*');
 
         if (error) {
-          console.error('Error fetching users for status update:', error);
           return;
         }
 
         if (!users || users.length === 0) {
-          console.log('No users found for status update');
           return;
         }
 
@@ -62,7 +59,7 @@ export const useUserStatusUpdater = () => {
                 await mikrotikService.updateUserStatus(user.username_dial, 'Inactive');
               }
             } catch (error) {
-              console.error(`Failed to update MikroTik status for ${user.username_dial}:`, error);
+              // Silent error handling
             }
           }
 
@@ -77,7 +74,7 @@ export const useUserStatusUpdater = () => {
                 await mikrotikService.updateUserStatus(user.username_dial, 'Terminate');
               }
             } catch (error) {
-              console.error(`Failed to update MikroTik status for ${user.username_dial}:`, error);
+              // Silent error handling
             }
           }
 
@@ -101,12 +98,8 @@ export const useUserStatusUpdater = () => {
             .eq('id', update.id);
         }
 
-        if (updates.length > 0) {
-          console.log(`Updated ${updates.length} user statuses`);
-        }
-
       } catch (error) {
-        console.error('Error in user status updater:', error);
+        // Silent error handling
       } finally {
         isRunningRef.current = false;
       }

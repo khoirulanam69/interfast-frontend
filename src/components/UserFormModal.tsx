@@ -32,7 +32,8 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     price: 100000,
     referred_by: null as string | null,
     installation_date: '',
-    expired_date: ''
+    expired_date: '',
+    username_dial: ''
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -89,7 +90,8 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         price: user.price || 100000,
         referred_by: user.referred_by || null,
         installation_date: user.installation_date || '',
-        expired_date: user.expired_date || ''
+        expired_date: user.expired_date || '',
+        username_dial: user.username_dial || ''
       });
     } else {
       // Reset form for new user with current date
@@ -112,7 +114,8 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         price: 100000,
         referred_by: null,
         installation_date: today,
-        expired_date: expiredDateString
+        expired_date: expiredDateString,
+        username_dial: ''
       });
     }
   }, [user]);
@@ -137,7 +140,8 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         price: formData.price,
         referred_by: formData.referred_by === 'none' ? null : formData.referred_by,
         installation_date: formData.installation_date,
-        expired_date: formData.expired_date
+        expired_date: formData.expired_date,
+        username_dial: formData.username_dial
       };
 
       if (user) {
@@ -162,8 +166,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
           .insert({
             ...dataToSubmit,
             payment_status: paymentStatus,
-            user_status: 'Active',
-            username_dial: ''
+            user_status: 'Active'
           });
 
         if (error) throw error;
@@ -177,7 +180,6 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
       onSave();
       onClose();
     } catch (error: any) {
-      console.error('Error saving user:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to save user",
@@ -238,6 +240,16 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="username_dial">Username Dial</Label>
+              <Input
+                id="username_dial"
+                value={formData.username_dial}
+                onChange={(e) => setFormData({ ...formData, username_dial: e.target.value })}
+                placeholder="Enter username dial"
               />
             </div>
 
