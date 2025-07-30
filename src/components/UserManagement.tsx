@@ -288,24 +288,38 @@ const UserManagement = () => {
       const newExpiredDate = new Date(currentExpiredDate);
       newExpiredDate.setMonth(newExpiredDate.getMonth() + 1);
 
+      // Update database first
       const { error } = await supabase
         .from('users')
         .update({ 
           expired_date: newExpiredDate.toISOString().split('T')[0],
-          payment_status: 'Paid', // Set to paid when extending
-          user_status: 'Active' // Set to active when extending
+          payment_status: 'Paid',
+          user_status: 'Active'
         })
         .eq('id', user.id);
 
       if (error) throw error;
       
-      // Update MikroTik status to Active
-      await handleStatusChange(user, 'Active');
-      
-      toast({
-        title: "Success",
-        description: `Extended period for ${user.name} to ${formatDate(newExpiredDate.toISOString().split('T')[0])}, set payment status to Paid, and activated user`,
-      });
+      // Then update MikroTik status to Active
+      try {
+        const mikrotikResult = await mikrotikService.updateUserStatus(user.username_dial, 'Active');
+        
+        if (!mikrotikResult.success) {
+          throw new Error('Failed to update MikroTik status');
+        }
+        
+        toast({
+          title: "Success",
+          description: `Extended period for ${user.name} to ${formatDate(newExpiredDate.toISOString().split('T')[0])}, set payment status to Paid, activated user, and enabled MikroTik access`,
+        });
+      } catch (mikrotikError) {
+        // If MikroTik update fails, still show success for database update but warn about MikroTik
+        toast({
+          title: "Partial Success",
+          description: `Extended period for ${user.name} and updated database, but failed to update MikroTik status. Please check MikroTik connection.`,
+          variant: "destructive",
+        });
+      }
       
       // Auto dismiss after 3 seconds
       setTimeout(() => {
@@ -317,7 +331,6 @@ const UserManagement = () => {
       
       fetchUsers();
     } catch (error) {
-      console.error('Error extending period:', error);
       toast({
         title: "Error",
         description: "Failed to extend period",
