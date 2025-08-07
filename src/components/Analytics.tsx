@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
@@ -31,13 +30,16 @@ const Analytics = () => {
       // Get users data grouped by month
       const { data: users, error: usersError } = await supabase
         .from('users')
-        .select('created_at, price, user_status, payment_status');
+        .select('created_at, price, user_status, payment_status, installation_date, expired_date');
 
       if (usersError) throw usersError;
+
+      console.log('Users data:', users);
 
       // Group data by month and calculate metrics
       const monthlyStats: { [key: string]: MonthlyData } = {};
       
+      // First pass: calculate new users per month
       users?.forEach(user => {
         const date = new Date(user.created_at);
         const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -54,10 +56,30 @@ const Analytics = () => {
         }
         
         monthlyStats[monthKey].newUsers += 1;
+      });
+
+      // Second pass: calculate revenue for each month from ALL active paid users
+      // For each month, count revenue from all users who were active and paid during that month
+      Object.keys(monthlyStats).forEach(monthKey => {
+        const [year, monthStr] = monthKey.split('-');
+        const targetMonth = new Date(parseInt(year), parseInt(monthStr) - 1, 1);
         
-        if (user.user_status === 'Active' && user.payment_status === 'Paid') {
-          monthlyStats[monthKey].revenue += user.price;
-        }
+        let monthlyRevenue = 0;
+        
+        users?.forEach(user => {
+          const installationDate = new Date(user.installation_date);
+          const expiredDate = new Date(user.expired_date);
+          
+          // Check if user was active during this month
+          const isActiveInMonth = installationDate <= targetMonth && expiredDate >= targetMonth;
+          
+          if (isActiveInMonth && user.user_status === 'Active' && user.payment_status === 'Paid') {
+            monthlyRevenue += user.price;
+          }
+        });
+        
+        monthlyStats[monthKey].revenue = monthlyRevenue;
+        console.log(`Revenue for ${monthKey}: ${monthlyRevenue}`);
       });
 
       // Calculate cumulative total users
@@ -93,6 +115,7 @@ const Analytics = () => {
           return { ...data, totalUsers: cumulativeUsers };
         });
 
+      console.log('Final sorted data:', sortedData);
       setMonthlyData(sortedData);
     } catch (error) {
       console.error('Error fetching analytics data:', error);
@@ -220,7 +243,7 @@ const Analytics = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Revenue Per Month</CardTitle>
+            <CardTitle>Monthly Revenue (All Active Users)</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={chartConfig} className="h-80">

@@ -94,12 +94,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         username_dial: user.username_dial || ''
       });
     } else {
-      // Reset form for new user with current date
-      const today = new Date().toISOString().split('T')[0];
-      const expiredDate = new Date();
-      expiredDate.setDate(expiredDate.getDate() + 30);
-      const expiredDateString = expiredDate.toISOString().split('T')[0];
-      
+      // Reset form for new user - completely empty
       setFormData({
         nik: '',
         name: '',
@@ -113,8 +108,8 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         package: 'Interfast Bronze',
         price: 100000,
         referred_by: null,
-        installation_date: today,
-        expired_date: expiredDateString,
+        installation_date: '',
+        expired_date: '',
         username_dial: ''
       });
     }
