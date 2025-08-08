@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useUserStatusUpdater } from '@/hooks/useUserStatusUpdater';
+import { mikrotikService } from '@/services/mikrotikService';
 import { Search, Plus, Edit, Trash2, Calendar, MessageSquare, Eye, Filter, Download, Upload } from 'lucide-react';
 import UserFormModal from './UserFormModal';
 import { Link } from 'react-router-dom';
@@ -46,6 +47,7 @@ const UserManagement = () => {
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [retryQueue, setRetryQueue] = useState<Array<{ username: string; userId: string; attempts: number; originalStatus: 'Active' | 'Inactive' | 'Terminate'; originalPaymentStatus: 'Paid' | 'Unpaid' }>>([]);
   const { toast } = useToast();
 
   // Initialize the user status updater
@@ -58,6 +60,73 @@ const UserManagement = () => {
   useEffect(() => {
     filterUsers();
   }, [users, searchTerm, statusFilter, paymentFilter]);
+
+  useEffect(() => {
+    if (retryQueue.length === 0) return;
+
+    const processRetryQueue = async () => {
+      const itemsToRetry = [...retryQueue];
+      setRetryQueue([]);
+
+      for (const item of itemsToRetry) {
+        if (item.attempts >= 10) {
+          console.error(`Max retry attempts reached for ${item.username}, reverting to original status`);
+          
+          // Revert user status back to original state in database
+          try {
+            await supabase
+              .from('users')
+              .update({
+                user_status: item.originalStatus,
+                payment_status: item.originalPaymentStatus
+              })
+              .eq('id', item.userId);
+
+            toast({
+              title: "Failed",
+              description: `Failed to enable ${item.username} in MikroTik after 10 attempts. Status reverted to original state.`,
+              variant: "destructive",
+            });
+
+            // Refresh users to show the reverted status
+            fetchUsers();
+          } catch (error) {
+            console.error(`Failed to revert status for ${item.username}:`, error);
+            toast({
+              title: "Error",
+              description: `Failed to enable ${item.username} in MikroTik and couldn't revert status. Please check manually.`,
+              variant: "destructive",
+            });
+          }
+          continue;
+        }
+
+        try {
+          console.log(`Retry attempt ${item.attempts + 1} for ${item.username}`);
+          await mikrotikService.updateUserStatus(item.username, 'Active');
+          console.log(`Successfully enabled ${item.username} in MikroTik on retry attempt ${item.attempts + 1}`);
+          
+          toast({
+            title: "Success",
+            description: `${item.username} has been enabled in MikroTik after ${item.attempts + 1} attempts`,
+          });
+        } catch (error) {
+          console.error(`Retry failed for ${item.username} (attempt ${item.attempts + 1}):`, error);
+          
+          // Add back to retry queue with incremented attempts, keeping original status info
+          setRetryQueue(prev => [...prev, {
+            ...item,
+            attempts: item.attempts + 1
+          }]);
+        }
+      }
+    };
+
+    // Process retry queue every 3 minutes
+    const retryInterval = setInterval(processRetryQueue, 3 * 60 * 1000);
+
+    return () => clearInterval(retryInterval);
+  }, [retryQueue, toast]);
 
   const fetchUsers = async () => {
     try {
@@ -137,6 +206,10 @@ const UserManagement = () => {
   };
 
   const handleExtendPeriod = async (user: User) => {
+    // Store original status before making changes
+    const originalStatus = user.user_status;
+    const originalPaymentStatus = user.payment_status;
+
     try {
       const today = new Date();
       const expiredDate = new Date(user.expired_date);
@@ -152,6 +225,7 @@ const UserManagement = () => {
         newExpiredDate.setMonth(newExpiredDate.getMonth() + 1);
       }
 
+      // Update user in database first
       const { error } = await supabase
         .from('users')
         .update({
@@ -163,10 +237,36 @@ const UserManagement = () => {
 
       if (error) throw error;
 
-      toast({
-        title: "Success",
-        description: "Subscription period extended successfully",
-      });
+      console.log(`Database updated successfully for ${user.username_dial}`);
+
+      // Try to enable user in MikroTik
+      try {
+        console.log(`Enabling PPP secret for ${user.username_dial} in MikroTik`);
+        await mikrotikService.updateUserStatus(user.username_dial, 'Active');
+        console.log(`PPP secret enabled successfully for ${user.username_dial}`);
+        
+        toast({
+          title: "Success",
+          description: "Subscription extended and user enabled in MikroTik successfully",
+        });
+      } catch (mikrotikError) {
+        console.error('Failed to enable PPP secret in MikroTik:', mikrotikError);
+        
+        // Add to retry queue for automatic retry every 3 minutes with original status info
+        setRetryQueue(prev => [...prev, {
+          username: user.username_dial,
+          userId: user.id,
+          attempts: 0,
+          originalStatus: originalStatus,
+          originalPaymentStatus: originalPaymentStatus
+        }]);
+        
+        toast({
+          title: "Partial Success",
+          description: "Subscription extended successfully. Failed to enable PPP secret in MikroTik - will retry automatically every 3 minutes.",
+          variant: "destructive",
+        });
+      }
       
       fetchUsers();
     } catch (error: any) {
@@ -416,12 +516,13 @@ Tim Interfast Media`;
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-32">NIK</TableHead>
                   <TableHead className="w-48">Name</TableHead>
+                  <TableHead className="w-64">Address</TableHead>
                   <TableHead>Package</TableHead>
                   <TableHead className="w-36">Expired Date</TableHead>
                   <TableHead>Payment Status</TableHead>
@@ -434,6 +535,7 @@ Tim Interfast Media`;
                   <TableRow key={user.id}>
                     <TableCell className="font-medium w-32">{user.nik}</TableCell>
                     <TableCell className="w-48">{user.name}</TableCell>
+                    <TableCell className="w-64 max-w-64 truncate" title={user.address}>{user.address}</TableCell>
                     <TableCell>{user.package}</TableCell>
                     <TableCell className="w-36">{user.expired_date}</TableCell>
                     <TableCell>{getPaymentBadge(user.payment_status)}</TableCell>

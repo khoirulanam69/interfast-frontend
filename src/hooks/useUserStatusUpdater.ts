@@ -100,8 +100,14 @@ Tim Interfast Media`;
         for (const user of users) {
           if (!user.expired_date) continue;
 
+          // Set expired date to end of day (23:59:59.999)
           const expiredDate = new Date(user.expired_date);
+          expiredDate.setHours(23, 59, 59, 999);
+          
+          // Calculate days difference more precisely
           const daysDiff = Math.ceil((expiredDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          
+          // For inactive users, calculate months since expiration
           const monthsDiff = Math.ceil((now.getTime() - expiredDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
 
           let shouldUpdate = false;
@@ -116,7 +122,8 @@ Tim Interfast Media`;
             shouldSendWhatsApp = true; // Send WhatsApp when payment becomes unpaid
           }
 
-          // Rule: Ubah status user menjadi inactive, Jika status payment unpaid sampai lebih dari tanggal expired date
+          // Rule: Ubah status user menjadi inactive pada jam 00:01 setelah tanggal expired date
+          // This means if expired date is 11-08-2025, user becomes inactive at 00:01 on 12-08-2025
           if (now > expiredDate && user.payment_status === 'Unpaid' && user.user_status === 'Active') {
             newStatus = 'Inactive';
             shouldUpdate = true;
@@ -246,6 +253,7 @@ Tim Interfast Media`;
           if (user) {
             const now = new Date();
             const expiredDate = new Date(user.expired_date);
+            expiredDate.setHours(23, 59, 59, 999);
             const daysDiff = Math.ceil((expiredDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             const monthsDiff = Math.ceil((now.getTime() - expiredDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
 
