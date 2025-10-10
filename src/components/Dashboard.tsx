@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, DollarSign, AlertTriangle, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useUserStatusUpdater } from '@/hooks/useUserStatusUpdater';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -13,9 +12,6 @@ const Dashboard = () => {
     totalRevenue: 0,
   });
   const [loading, setLoading] = useState(true);
-
-  // Use the status updater hook
-  useUserStatusUpdater();
 
   useEffect(() => {
     const fetchStats = async () => {

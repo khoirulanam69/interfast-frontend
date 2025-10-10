@@ -8,9 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useUserStatusUpdater } from '@/hooks/useUserStatusUpdater';
 import { mikrotikService } from '@/services/mikrotikService';
-import { Search, Plus, Edit, Trash2, Calendar, MessageSquare, Eye, Filter, Download, Upload } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Calendar, MessageSquare, Eye, Filter, Download, Upload, ArrowUpDown } from 'lucide-react';
 import UserFormModal from './UserFormModal';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -45,13 +44,11 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [retryQueue, setRetryQueue] = useState<Array<{ username: string; userId: string; attempts: number; originalStatus: 'Active' | 'Inactive' | 'Terminate'; originalPaymentStatus: 'Paid' | 'Unpaid' }>>([]);
   const { toast } = useToast();
-
-  // Initialize the user status updater
-  useUserStatusUpdater();
 
   useEffect(() => {
     fetchUsers();
@@ -59,7 +56,7 @@ const UserManagement = () => {
 
   useEffect(() => {
     filterUsers();
-  }, [users, searchTerm, statusFilter, paymentFilter]);
+  }, [users, searchTerm, statusFilter, paymentFilter, sortOrder]);
 
   useEffect(() => {
     if (retryQueue.length === 0) return;
@@ -168,7 +165,26 @@ const UserManagement = () => {
       filtered = filtered.filter(user => user.payment_status === paymentFilter);
     }
 
+    // Apply sorting by expired date
+    if (sortOrder) {
+      filtered = [...filtered].sort((a, b) => {
+        const dateA = new Date(a.expired_date).getTime();
+        const dateB = new Date(b.expired_date).getTime();
+        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+      });
+    }
+
     setFilteredUsers(filtered);
+  };
+
+  const toggleSortOrder = () => {
+    if (sortOrder === null) {
+      setSortOrder('asc');
+    } else if (sortOrder === 'asc') {
+      setSortOrder('desc');
+    } else {
+      setSortOrder(null);
+    }
   };
 
   const handleEdit = (user: User) => {
@@ -524,7 +540,17 @@ Tim Interfast Media`;
                   <TableHead className="w-48">Name</TableHead>
                   <TableHead className="w-64">Address</TableHead>
                   <TableHead>Package</TableHead>
-                  <TableHead className="w-36">Expired Date</TableHead>
+                  <TableHead className="w-36">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={toggleSortOrder}
+                      className="h-8 p-0 hover:bg-transparent"
+                    >
+                      Expired Date
+                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                  </TableHead>
                   <TableHead>Payment Status</TableHead>
                   <TableHead>User Status</TableHead>
                   <TableHead>Actions</TableHead>

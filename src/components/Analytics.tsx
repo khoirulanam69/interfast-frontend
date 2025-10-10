@@ -58,11 +58,12 @@ const Analytics = () => {
         monthlyStats[monthKey].newUsers += 1;
       });
 
-      // Second pass: calculate revenue for each month from ALL active paid users
-      // For each month, count revenue from all users who were active and paid during that month
+      // Second pass: calculate revenue for each month from ALL active users
+      // For each month, count revenue from all users who were active during that month
       Object.keys(monthlyStats).forEach(monthKey => {
         const [year, monthStr] = monthKey.split('-');
         const targetMonth = new Date(parseInt(year), parseInt(monthStr) - 1, 1);
+        const targetMonthEnd = new Date(parseInt(year), parseInt(monthStr), 0); // Last day of the month
         
         let monthlyRevenue = 0;
         
@@ -71,9 +72,12 @@ const Analytics = () => {
           const expiredDate = new Date(user.expired_date);
           
           // Check if user was active during this month
-          const isActiveInMonth = installationDate <= targetMonth && expiredDate >= targetMonth;
+          // User is active if: installation_date <= last day of month AND expired_date >= first day of month
+          const isActiveInMonth = installationDate <= targetMonthEnd && expiredDate >= targetMonth;
           
-          if (isActiveInMonth && user.user_status === 'Active' && user.payment_status === 'Paid') {
+          // Calculate revenue from all active users regardless of payment_status
+          // because payment_status is reset monthly but we want to show expected revenue
+          if (isActiveInMonth && user.user_status === 'Active') {
             monthlyRevenue += user.price;
           }
         });
