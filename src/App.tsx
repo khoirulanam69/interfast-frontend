@@ -16,6 +16,7 @@ import MikroTikManagement from "./components/MikroTikManagement";
 import ReferralPage from "./components/ReferralPage";
 import Settings from "./components/Settings";
 import Analytics from "./components/Analytics";
+import ErrorLogs from "./components/ErrorLogs";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/mikrotik" element={<MikroTikManagement />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/referrals" element={<ReferralPage />} />
+              <Route path="/logs" element={<ErrorLogs />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />

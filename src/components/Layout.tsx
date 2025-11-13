@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Home, Users, Package, Settings, Wifi, BarChart3, UserPlus, LogOut } from 'lucide-react';
+import { Menu, X, Home, Users, Package, Settings, Wifi, BarChart3, UserPlus, LogOut, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -48,6 +48,7 @@ const Layout = () => {
     { name: 'MikroTik Management', icon: Wifi, path: '/mikrotik' },
     { name: 'Analytics', icon: BarChart3, path: '/analytics' },
     { name: 'Referral Program', icon: UserPlus, path: '/referrals' },
+    { name: 'Error Logs', icon: FileText, path: '/logs' },
     { name: 'Settings', icon: Settings, path: '/settings' },
   ];
 
