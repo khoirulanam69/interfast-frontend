@@ -5,6 +5,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarC
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { TrendingUp, Users, DollarSign } from 'lucide-react';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface MonthlyData {
   month: string;
@@ -221,27 +222,32 @@ const Analytics = () => {
             <CardTitle>New Users Per Month</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="month" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    fontSize={10}
-                  />
-                  <YAxis />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar 
-                    dataKey="newUsers" 
-                    fill="var(--color-newUsers)" 
-                    name="New Users"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+            <ScrollArea className="w-full">
+              <div style={{ minWidth: `${Math.max(600, monthlyData.length * 80)}px` }}>
+                <ChartContainer config={chartConfig} className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="month" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                        fontSize={10}
+                      />
+                      <YAxis />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar 
+                        dataKey="newUsers" 
+                        fill="var(--color-newUsers)" 
+                        name="New Users"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           </CardContent>
         </Card>
 
@@ -250,35 +256,40 @@ const Analytics = () => {
             <CardTitle>Monthly Revenue (All Active Users)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="month" 
-                    angle={-45}
-                    textAnchor="end"
-                    height={80}
-                    fontSize={10}
-                  />
-                  <YAxis 
-                    tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
-                  />
-                  <ChartTooltip 
-                    content={<ChartTooltipContent />}
-                    formatter={(value: any) => [formatCurrency(value), 'Revenue']}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="var(--color-revenue)" 
-                    strokeWidth={3}
-                    name="Revenue"
-                    dot={{ r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+            <ScrollArea className="w-full">
+              <div style={{ minWidth: `${Math.max(600, monthlyData.length * 80)}px` }}>
+                <ChartContainer config={chartConfig} className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="month" 
+                        angle={-45}
+                        textAnchor="end"
+                        height={80}
+                        fontSize={10}
+                      />
+                      <YAxis 
+                        tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                      />
+                      <ChartTooltip 
+                        content={<ChartTooltipContent />}
+                        formatter={(value: any) => [formatCurrency(value), 'Revenue']}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="revenue" 
+                        stroke="var(--color-revenue)" 
+                        strokeWidth={3}
+                        name="Revenue"
+                        dot={{ r: 4 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
+              <ScrollBar orientation="horizontal" />
+            </ScrollArea>
           </CardContent>
         </Card>
       </div>
