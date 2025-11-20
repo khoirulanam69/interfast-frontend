@@ -255,32 +255,40 @@ const UserManagement = () => {
 
       console.log(`Database updated successfully for ${user.username_dial}`);
 
-      // Try to enable user in MikroTik
-      try {
-        console.log(`Enabling PPP secret for ${user.username_dial} in MikroTik`);
-        await mikrotikService.updateUserStatus(user.username_dial, 'Active');
-        console.log(`PPP secret enabled successfully for ${user.username_dial}`);
-        
+      // Only update MikroTik if user was previously Inactive
+      if (originalStatus === 'Inactive') {
+        try {
+          console.log(`Enabling PPP secret for ${user.username_dial} in MikroTik`);
+          await mikrotikService.updateUserStatus(user.username_dial, 'Active');
+          console.log(`PPP secret enabled successfully for ${user.username_dial}`);
+          
+          toast({
+            title: "Success",
+            description: "Subscription extended and user enabled in MikroTik successfully",
+          });
+        } catch (mikrotikError) {
+          console.error('Failed to enable PPP secret in MikroTik:', mikrotikError);
+          
+          // Add to retry queue for automatic retry every 3 minutes with original status info
+          setRetryQueue(prev => [...prev, {
+            username: user.username_dial,
+            userId: user.id,
+            attempts: 0,
+            originalStatus: originalStatus,
+            originalPaymentStatus: originalPaymentStatus
+          }]);
+          
+          toast({
+            title: "Partial Success",
+            description: "Subscription extended successfully. Failed to enable PPP secret in MikroTik - will retry automatically every 3 minutes.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        // User was already Active, no MikroTik changes needed
         toast({
           title: "Success",
-          description: "Subscription extended and user enabled in MikroTik successfully",
-        });
-      } catch (mikrotikError) {
-        console.error('Failed to enable PPP secret in MikroTik:', mikrotikError);
-        
-        // Add to retry queue for automatic retry every 3 minutes with original status info
-        setRetryQueue(prev => [...prev, {
-          username: user.username_dial,
-          userId: user.id,
-          attempts: 0,
-          originalStatus: originalStatus,
-          originalPaymentStatus: originalPaymentStatus
-        }]);
-        
-        toast({
-          title: "Partial Success",
-          description: "Subscription extended successfully. Failed to enable PPP secret in MikroTik - will retry automatically every 3 minutes.",
-          variant: "destructive",
+          description: "Subscription extended successfully",
         });
       }
       

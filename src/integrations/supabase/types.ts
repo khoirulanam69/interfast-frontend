@@ -181,18 +181,9 @@ export type Database = {
         Args: { user_id: string }
         Returns: number
       }
-      reset_monthly_payment_status: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      update_expired_users: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      update_monthly_analytics: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      reset_monthly_payment_status: { Args: never; Returns: undefined }
+      update_expired_users: { Args: never; Returns: undefined }
+      update_monthly_analytics: { Args: never; Returns: undefined }
     }
     Enums: {
       package_type:
