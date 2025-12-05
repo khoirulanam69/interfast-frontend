@@ -227,19 +227,10 @@ const UserManagement = () => {
     const originalPaymentStatus = user.payment_status;
 
     try {
-      const today = new Date();
       const expiredDate = new Date(user.expired_date);
-      let newExpiredDate;
-      
-      if (today > expiredDate) {
-        // Paying after expired date - use today's date + 1 month, keep the day
-        newExpiredDate = new Date(today);
-        newExpiredDate.setMonth(newExpiredDate.getMonth() + 1);
-      } else {
-        // Paying before expired date - use original expired date + 1 month, keep the day
-        newExpiredDate = new Date(expiredDate);
-        newExpiredDate.setMonth(newExpiredDate.getMonth() + 1);
-      }
+      // Always add 1 month to the current expired_date, regardless of payment date
+      const newExpiredDate = new Date(expiredDate);
+      newExpiredDate.setMonth(newExpiredDate.getMonth() + 1);
 
       // Update user in database first
       const { error } = await supabase
@@ -610,24 +601,12 @@ Tim Interfast Media`;
                               <AlertDialogTitle>Extend Subscription Period</AlertDialogTitle>
                               <AlertDialogDescription>
                                 {(() => {
-                                  const today = new Date();
                                   const expiredDate = new Date(user.expired_date);
-                                  let newExpiredDate;
-                                  let paymentTiming;
+                                  // Always add 1 month to the current expired_date
+                                  const newExpiredDate = new Date(expiredDate);
+                                  newExpiredDate.setMonth(newExpiredDate.getMonth() + 1);
                                   
-                                  if (today > expiredDate) {
-                                    // Paying after expired date - use today's date + 1 month, keep the day
-                                    newExpiredDate = new Date(today);
-                                    newExpiredDate.setMonth(newExpiredDate.getMonth() + 1);
-                                    paymentTiming = 'after expired date';
-                                  } else {
-                                    // Paying before expired date - use original expired date + 1 month, keep the day
-                                    newExpiredDate = new Date(expiredDate);
-                                    newExpiredDate.setMonth(newExpiredDate.getMonth() + 1);
-                                    paymentTiming = 'before expired date';
-                                  }
-                                  
-                                  return `Are you sure you want to extend the subscription for ${user.name}? This will change the expired date from ${user.expired_date} to ${newExpiredDate.toISOString().split('T')[0]} (paying ${paymentTiming}) and set payment status to Paid.`;
+                                  return `Are you sure you want to extend the subscription for ${user.name}? This will change the expired date from ${user.expired_date} to ${newExpiredDate.toISOString().split('T')[0]} and set payment status to Paid.`;
                                 })()}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
