@@ -1,7 +1,7 @@
 
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: 'http://103.13.206.65:3001/api',
+  BASE_URL: 'https://muhammadkhoirulanam.my.id/api',
   ENDPOINTS: {
     MIKROTIK: {
       TEST_CONNECTION: '/mikrotik/test-connection',
