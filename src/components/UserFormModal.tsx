@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { mikrotikService } from '@/services/mikrotikService';
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -72,6 +73,20 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     const diffTime = expired.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= 3;
+  };
+
+  // Generate PPPoE username: [name]-[address] (sanitized)
+  const generatePPPoEUsername = (name: string, address: string) => {
+    const sanitize = (str: string) => str
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .substring(0, 20);
+    return `${sanitize(name)}-${sanitize(address)}`;
+  };
+
+  // Generate PPPoE password: last 6 digits of NIK
+  const generatePPPoEPassword = (nik: string) => {
+    return nik.slice(-6);
   };
 
   useEffect(() => {
@@ -155,21 +170,53 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
       } else {
         // Create new user
         const paymentStatus = shouldSetUnpaid(formData.expired_date) ? 'Unpaid' : 'Paid';
+        
+        // Generate PPPoE credentials
+        const pppoeUsername = generatePPPoEUsername(formData.name, formData.address);
+        const pppoePassword = generatePPPoEPassword(formData.nik);
 
-        const { error } = await supabase
+        const { data: newUser, error } = await supabase
           .from('users')
           .insert({
             ...dataToSubmit,
+            username_dial: pppoeUsername,
+            password_pppoe: pppoePassword,
             payment_status: paymentStatus,
             user_status: 'Active'
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
-        
-        toast({
-          title: "Success",
-          description: "User created successfully with Active status",
-        });
+
+        // Create PPPoE Secret in MikroTik
+        try {
+          const mikrotikResult = await mikrotikService.createPPPSecret(
+            pppoeUsername,
+            pppoePassword,
+            formData.package
+          );
+
+          if (mikrotikResult.success) {
+            toast({
+              title: "Success",
+              description: `User created and PPPoE Secret registered in MikroTik (${pppoeUsername})`,
+            });
+          } else {
+            toast({
+              title: "Partial Success",
+              description: `User created but failed to register in MikroTik: ${mikrotikResult.message}`,
+              variant: "destructive",
+            });
+          }
+        } catch (mikrotikError: any) {
+          console.error('MikroTik error:', mikrotikError);
+          toast({
+            title: "Partial Success",
+            description: `User created but MikroTik registration failed: ${mikrotikError.message}`,
+            variant: "destructive",
+          });
+        }
       }
 
       onSave();

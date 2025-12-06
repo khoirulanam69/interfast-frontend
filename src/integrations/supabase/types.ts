@@ -107,6 +107,7 @@ export type Database = {
           name: string
           nik: string
           package: string
+          password_pppoe: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
           phone: string
           price: number
@@ -129,6 +130,7 @@ export type Database = {
           name: string
           nik: string
           package?: string
+          password_pppoe?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           phone: string
           price?: number
@@ -151,6 +153,7 @@ export type Database = {
           name?: string
           nik?: string
           package?: string
+          password_pppoe?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           phone?: string
           price?: number

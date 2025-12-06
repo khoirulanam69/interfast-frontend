@@ -154,7 +154,8 @@ const UserDetail = () => {
             <div><strong>Phone:</strong> {user.phone}</div>
             <div><strong>Address:</strong> {user.address}</div>
             <div><strong>Package:</strong> {user.package}</div>
-            <div><strong>Username Dial:</strong> {user.username_dial}</div>
+            <div><strong>Username PPPoE:</strong> {user.username_dial}</div>
+            <div><strong>Password PPPoE:</strong> {user.password_pppoe || '-'}</div>
             <div><strong>Status:</strong> {user.user_status}</div>
             <div><strong>Payment:</strong> {user.payment_status}</div>
             {user.installation_date && (
