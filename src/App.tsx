@@ -18,6 +18,7 @@ import ReferralPage from "./components/ReferralPage";
 import Settings from "./components/Settings";
 import Analytics from "./components/Analytics";
 import ErrorLogs from "./components/ErrorLogs";
+import FinancialManagement from "./components/FinancialManagement";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
                 <Route path="users" element={<UserManagement />} />
                 <Route path="users/:nik" element={<UserDetail />} />
                 <Route path="packages" element={<PackageManagement />} />
+                <Route path="finance" element={<FinancialManagement />} />
                 <Route path="mikrotik" element={<MikroTikManagement />} />
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="referrals" element={<ReferralPage />} />

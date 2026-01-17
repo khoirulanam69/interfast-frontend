@@ -68,6 +68,83 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_summary: {
+        Row: {
+          created_at: string
+          id: string
+          month: number
+          net_profit: number
+          total_expense: number
+          total_income: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          month: number
+          net_profit?: number
+          total_expense?: number
+          total_income?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          month?: number
+          net_profit?: number
+          total_expense?: number
+          total_income?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
+      }
+      financial_transactions: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["transaction_category"]
+          created_at: string
+          description: string | null
+          id: string
+          transaction_date: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          amount: number
+          category: Database["public"]["Enums"]["transaction_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          transaction_date?: string
+          transaction_type: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["transaction_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          transaction_date?: string
+          transaction_type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       packages: {
         Row: {
           bandwidth: string
@@ -186,6 +263,10 @@ export type Database = {
       }
       reset_monthly_payment_status: { Args: never; Returns: undefined }
       update_expired_users: { Args: never; Returns: undefined }
+      update_financial_summary: {
+        Args: { p_month: number; p_year: number }
+        Returns: undefined
+      }
       update_monthly_analytics: { Args: never; Returns: undefined }
     }
     Enums: {
@@ -195,6 +276,16 @@ export type Database = {
         | "Interfast Gold"
         | "Interfast Platinum"
       payment_status: "Paid" | "Unpaid"
+      transaction_category:
+        | "subscription"
+        | "installation"
+        | "other_income"
+        | "operational"
+        | "salary"
+        | "equipment"
+        | "maintenance"
+        | "other_expense"
+      transaction_type: "income" | "expense"
       user_status: "Active" | "Inactive" | "Terminate"
     }
     CompositeTypes: {
@@ -330,6 +421,17 @@ export const Constants = {
         "Interfast Platinum",
       ],
       payment_status: ["Paid", "Unpaid"],
+      transaction_category: [
+        "subscription",
+        "installation",
+        "other_income",
+        "operational",
+        "salary",
+        "equipment",
+        "maintenance",
+        "other_expense",
+      ],
+      transaction_type: ["income", "expense"],
       user_status: ["Active", "Inactive", "Terminate"],
     },
   },

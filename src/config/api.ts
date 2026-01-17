@@ -1,7 +1,7 @@
 
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: 'https://api.interfast.mkaindo.com/api',
+  BASE_URL: 'https://api.interfast.mkaindo.com',
   ENDPOINTS: {
     MIKROTIK: {
       TEST_CONNECTION: '/mikrotik/test-connection',
