@@ -9,11 +9,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Trash2, Edit, ArrowUpCircle, ArrowDownCircle, Wallet, User } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Trash2, Edit, ArrowUpCircle, ArrowDownCircle, Wallet, User, Check, ChevronsUpDown } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
+import { mikrotikService } from '@/services/mikrotikService';
 import { id } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 type TransactionType = 'income' | 'expense';
 type TransactionCategory = 'subscription' | 'installation' | 'other_income' | 'operational' | 'salary' | 'equipment' | 'maintenance' | 'other_expense';
@@ -81,6 +85,8 @@ const FinancialManagement = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
   const { toast } = useToast();
 
   // Form state
@@ -243,6 +249,9 @@ const FinancialManagement = () => {
             const currentExpiredDate = new Date(customer.expired_date);
             const newExpiredDate = addMonths(currentExpiredDate, 1);
             
+            // Check if user was inactive before payment
+            const wasInactive = customer.user_status === 'Inactive';
+            
             const { error: updateError } = await supabase
               .from('users')
               .update({
@@ -260,10 +269,30 @@ const FinancialManagement = () => {
                 variant: 'destructive',
               });
             } else {
-              toast({ 
-                title: 'Sukses', 
-                description: `Transaksi berhasil & status ${customer.name} diperbarui` 
-              });
+              // If user was inactive, enable PPP user in MikroTik
+              if (wasInactive && customer.username_dial) {
+                try {
+                  console.log(`Enabling PPP user ${customer.username_dial} in MikroTik...`);
+                  await mikrotikService.updateUserStatus(customer.username_dial, 'Active');
+                  console.log(`PPP user ${customer.username_dial} enabled successfully`);
+                  toast({ 
+                    title: 'Sukses', 
+                    description: `Transaksi berhasil, ${customer.name} diaktifkan kembali` 
+                  });
+                } catch (mikrotikError) {
+                  console.error('Error enabling PPP user in MikroTik:', mikrotikError);
+                  toast({ 
+                    title: 'Peringatan', 
+                    description: `Transaksi berhasil & DB updated, tapi gagal aktifkan MikroTik. Silakan aktifkan manual.`,
+                    variant: 'destructive',
+                  });
+                }
+              } else {
+                toast({ 
+                  title: 'Sukses', 
+                  description: `Transaksi berhasil & status ${customer.name} diperbarui` 
+                });
+              }
             }
           }
         } else {
@@ -321,6 +350,7 @@ const FinancialManagement = () => {
   const resetForm = () => {
     setEditingTransaction(null);
     setSelectedCustomerId('');
+    setCustomerSearchQuery('');
     setFormData({
       transaction_type: 'income',
       category: 'subscription',
@@ -332,6 +362,7 @@ const FinancialManagement = () => {
 
   const handleTypeChange = (type: TransactionType) => {
     setSelectedCustomerId('');
+    setCustomerSearchQuery('');
     setFormData(prev => ({
       ...prev,
       transaction_type: type,
@@ -343,6 +374,7 @@ const FinancialManagement = () => {
 
   const handleCategoryChange = (category: TransactionCategory) => {
     setSelectedCustomerId('');
+    setCustomerSearchQuery('');
     setFormData(prev => ({
       ...prev,
       category,
@@ -503,29 +535,90 @@ const FinancialManagement = () => {
                   </Select>
                 </div>
 
-                {/* Customer Selector - Only show for subscription income */}
+                {/* Customer Selector with Search - Only show for subscription income */}
                 {showCustomerSelector && !editingTransaction && (
                   <div className="space-y-2">
                     <Label htmlFor="customer">Pelanggan</Label>
-                    <Select 
-                      value={selectedCustomerId} 
-                      onValueChange={handleCustomerSelect}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih pelanggan..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customers.map((customer) => (
-                          <SelectItem key={customer.id} value={customer.id}>
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-muted-foreground" />
-                              <span>{customer.name}</span>
-                              <span className="text-muted-foreground">({customer.username_dial})</span>
+                    <Popover open={customerSearchOpen} onOpenChange={setCustomerSearchOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={customerSearchOpen}
+                          className="w-full justify-between font-normal"
+                        >
+                          {selectedCustomerId ? (
+                            <div className="flex items-center gap-2 truncate">
+                              <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <span className="truncate">
+                                {customers.find(c => c.id === selectedCustomerId)?.name}
+                              </span>
+                              <span className="text-muted-foreground truncate">
+                                ({customers.find(c => c.id === selectedCustomerId)?.username_dial})
+                              </span>
                             </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                          ) : (
+                            <span className="text-muted-foreground">Cari pelanggan...</span>
+                          )}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[350px] p-0" align="start">
+                        <Command shouldFilter={false}>
+                          <CommandInput 
+                            placeholder="Cari nama, username, atau ID..." 
+                            value={customerSearchQuery}
+                            onValueChange={setCustomerSearchQuery}
+                          />
+                          <CommandList>
+                            <CommandEmpty>Pelanggan tidak ditemukan.</CommandEmpty>
+                            <CommandGroup>
+                              {customers
+                                .filter(customer => {
+                                  if (!customerSearchQuery) return true;
+                                  const query = customerSearchQuery.toLowerCase();
+                                  return (
+                                    customer.name.toLowerCase().includes(query) ||
+                                    customer.username_dial.toLowerCase().includes(query) ||
+                                    customer.id.toLowerCase().includes(query)
+                                  );
+                                })
+                                .slice(0, 50) // Limit to 50 results for performance
+                                .map((customer) => (
+                                  <CommandItem
+                                    key={customer.id}
+                                    value={customer.id}
+                                    onSelect={() => {
+                                      handleCustomerSelect(customer.id);
+                                      setCustomerSearchOpen(false);
+                                      setCustomerSearchQuery('');
+                                    }}
+                                    className="cursor-pointer"
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    <div className="flex flex-col flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                                        <span className="font-medium truncate">{customer.name}</span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <span>{customer.username_dial}</span>
+                                        <span>•</span>
+                                        <span>{formatRupiah(customer.price)}</span>
+                                      </div>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     {selectedCustomerId && (
                       <p className="text-xs text-muted-foreground">
                         Expired: {format(new Date(customers.find(c => c.id === selectedCustomerId)?.expired_date || ''), 'dd MMM yyyy', { locale: id })}

@@ -8,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { mikrotikService } from '@/services/mikrotikService';
-import { Search, Plus, Edit, Trash2, Calendar, MessageSquare, Eye, Filter, Download, Upload, ArrowUpDown } from 'lucide-react';
+
+import { Search, Plus, Edit, Trash2, MessageSquare, Eye, Filter, Download, Upload, ArrowUpDown } from 'lucide-react';
 import UserFormModal from './UserFormModal';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -47,7 +47,7 @@ const UserManagement = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [retryQueue, setRetryQueue] = useState<Array<{ username: string; userId: string; attempts: number; originalStatus: 'Active' | 'Inactive' | 'Terminate'; originalPaymentStatus: 'Paid' | 'Unpaid' }>>([]);
+  
   const { toast } = useToast();
 
   useEffect(() => {
@@ -58,72 +58,6 @@ const UserManagement = () => {
     filterUsers();
   }, [users, searchTerm, statusFilter, paymentFilter, sortOrder]);
 
-  useEffect(() => {
-    if (retryQueue.length === 0) return;
-
-    const processRetryQueue = async () => {
-      const itemsToRetry = [...retryQueue];
-      setRetryQueue([]);
-
-      for (const item of itemsToRetry) {
-        if (item.attempts >= 10) {
-          console.error(`Max retry attempts reached for ${item.username}, reverting to original status`);
-          
-          // Revert user status back to original state in database
-          try {
-            await supabase
-              .from('users')
-              .update({
-                user_status: item.originalStatus,
-                payment_status: item.originalPaymentStatus
-              })
-              .eq('id', item.userId);
-
-            toast({
-              title: "Failed",
-              description: `Failed to enable ${item.username} in MikroTik after 10 attempts. Status reverted to original state.`,
-              variant: "destructive",
-            });
-
-            // Refresh users to show the reverted status
-            fetchUsers();
-          } catch (error) {
-            console.error(`Failed to revert status for ${item.username}:`, error);
-            toast({
-              title: "Error",
-              description: `Failed to enable ${item.username} in MikroTik and couldn't revert status. Please check manually.`,
-              variant: "destructive",
-            });
-          }
-          continue;
-        }
-
-        try {
-          console.log(`Retry attempt ${item.attempts + 1} for ${item.username}`);
-          await mikrotikService.updateUserStatus(item.username, 'Active');
-          console.log(`Successfully enabled ${item.username} in MikroTik on retry attempt ${item.attempts + 1}`);
-          
-          toast({
-            title: "Success",
-            description: `${item.username} has been enabled in MikroTik after ${item.attempts + 1} attempts`,
-          });
-        } catch (error) {
-          console.error(`Retry failed for ${item.username} (attempt ${item.attempts + 1}):`, error);
-          
-          // Add back to retry queue with incremented attempts, keeping original status info
-          setRetryQueue(prev => [...prev, {
-            ...item,
-            attempts: item.attempts + 1
-          }]);
-        }
-      }
-    };
-
-    // Process retry queue every 3 minutes
-    const retryInterval = setInterval(processRetryQueue, 3 * 60 * 1000);
-
-    return () => clearInterval(retryInterval);
-  }, [retryQueue, toast]);
 
   const fetchUsers = async () => {
     try {
@@ -221,77 +155,6 @@ const UserManagement = () => {
     }
   };
 
-  const handleExtendPeriod = async (user: User) => {
-    // Store original status before making changes
-    const originalStatus = user.user_status;
-    const originalPaymentStatus = user.payment_status;
-
-    try {
-      const expiredDate = new Date(user.expired_date);
-      // Always add 1 month to the current expired_date, regardless of payment date
-      const newExpiredDate = new Date(expiredDate);
-      newExpiredDate.setMonth(newExpiredDate.getMonth() + 1);
-
-      // Update user in database first
-      const { error } = await supabase
-        .from('users')
-        .update({
-          expired_date: newExpiredDate.toISOString().split('T')[0],
-          payment_status: 'Paid',
-          user_status: 'Active'
-        })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      console.log(`Database updated successfully for ${user.username_dial}`);
-
-      // Only update MikroTik if user was previously Inactive
-      if (originalStatus === 'Inactive') {
-        try {
-          console.log(`Enabling PPP secret for ${user.username_dial} in MikroTik`);
-          await mikrotikService.updateUserStatus(user.username_dial, 'Active');
-          console.log(`PPP secret enabled successfully for ${user.username_dial}`);
-          
-          toast({
-            title: "Success",
-            description: "Subscription extended and user enabled in MikroTik successfully",
-          });
-        } catch (mikrotikError) {
-          console.error('Failed to enable PPP secret in MikroTik:', mikrotikError);
-          
-          // Add to retry queue for automatic retry every 3 minutes with original status info
-          setRetryQueue(prev => [...prev, {
-            username: user.username_dial,
-            userId: user.id,
-            attempts: 0,
-            originalStatus: originalStatus,
-            originalPaymentStatus: originalPaymentStatus
-          }]);
-          
-          toast({
-            title: "Partial Success",
-            description: "Subscription extended successfully. Failed to enable PPP secret in MikroTik - will retry automatically every 3 minutes.",
-            variant: "destructive",
-          });
-        }
-      } else {
-        // User was already Active, no MikroTik changes needed
-        toast({
-          title: "Success",
-          description: "Subscription extended successfully",
-        });
-      }
-      
-      fetchUsers();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to extend period",
-        variant: "destructive",
-      });
-    }
-  };
 
   const sendWhatsAppMessage = (user: User) => {
     const formatCurrency = (amount: number) => {
@@ -586,38 +449,6 @@ Tim Interfast Media`;
                         >
                           <MessageSquare className="h-4 w-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              disabled={user.user_status === 'Terminate'}
-                            >
-                              <Calendar className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Extend Subscription Period</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {(() => {
-                                  const expiredDate = new Date(user.expired_date);
-                                  // Always add 1 month to the current expired_date
-                                  const newExpiredDate = new Date(expiredDate);
-                                  newExpiredDate.setMonth(newExpiredDate.getMonth() + 1);
-                                  
-                                  return `Are you sure you want to extend the subscription for ${user.name}? This will change the expired date from ${user.expired_date} to ${newExpiredDate.toISOString().split('T')[0]} and set payment status to Paid.`;
-                                })()}
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleExtendPeriod(user)}>
-                                Extend Period
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button size="sm" variant="destructive">
