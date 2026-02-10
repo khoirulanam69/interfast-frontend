@@ -6,24 +6,24 @@ export const API_CONFIG = {
   BASE_URL: API_BASE_URL,
   ENDPOINTS: {
     MIKROTIK: {
-      TEST_CONNECTION: '/mikrotik/test-connection',
-      INTERFACES: '/mikrotik/interfaces',
-      PPP_SECRETS: '/mikrotik/ppp/secrets',
-      PPP_ACTIVE: '/mikrotik/ppp/active',
-      WIRELESS: '/mikrotik/wireless',
-      IP_ADDRESSES: '/mikrotik/ip/addresses',
-      IP_ROUTES: '/mikrotik/ip/routes',
-      SYSTEM_RESOURCE: '/mikrotik/system/resource',
-      SYSTEM_IDENTITY: '/mikrotik/system/identity',
-      QUEUES: '/mikrotik/queues',
-      MONITORING: '/mikrotik/monitoring',
-      // User management endpoints - updated paths
-      UPDATE_USER_STATUS: '/mikrotik/user/update-status',
-      REGENERATE_CREDENTIALS: '/mikrotik/user/regenerate-credentials',
-      CREATE_PPP_SECRET: '/mikrotik/user/create-secret',
-      REMOVE_USER: '/mikrotik/user',
-      DELETE_PPP_SECRET: '/mikrotik/ppp/secret',
-      DISCONNECT_PPP_USER: '/mikrotik/ppp/active'
+      TEST_CONNECTION: '/api/mikrotik/test-connection',
+      INTERFACES: '/api/mikrotik/interfaces',
+      PPP_SECRETS: '/api/mikrotik/ppp/secrets',
+      PPP_ACTIVE: '/api/mikrotik/ppp/active',
+      WIRELESS: '/api/mikrotik/wireless',
+      IP_ADDRESSES: '/api/mikrotik/ip/addresses',
+      IP_ROUTES: '/api/mikrotik/ip/routes',
+      SYSTEM_RESOURCE: '/api/mikrotik/system/resource',
+      SYSTEM_IDENTITY: '/api/mikrotik/system/identity',
+      QUEUES: '/api/mikrotik/queues',
+      MONITORING: '/api/mikrotik/monitoring',
+      // User management endpoints
+      UPDATE_USER_STATUS: '/api/mikrotik/user/update-status',
+      REGENERATE_CREDENTIALS: '/api/mikrotik/user/regenerate-credentials',
+      CREATE_PPP_SECRET: '/api/mikrotik/user/create-secret',
+      REMOVE_USER: '/api/mikrotik/user',
+      DELETE_PPP_SECRET: '/api/mikrotik/ppp/secret',
+      DISCONNECT_PPP_USER: '/api/mikrotik/ppp/active'
     },
     DATABASE: {
       USERS: '/db/users',

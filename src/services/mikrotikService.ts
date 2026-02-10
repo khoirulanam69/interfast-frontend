@@ -171,7 +171,7 @@ export const mikrotikService = {
 
   async enableInterface(interfaceId: string) {
     try {
-      const result = await apiCall(`/mikrotik/interfaces/${interfaceId}/enable`, {
+      const result = await apiCall(`/api/mikrotik/interfaces/${interfaceId}/enable`, {
         method: 'POST'
       });
       return result;
@@ -183,7 +183,7 @@ export const mikrotikService = {
 
   async disableInterface(interfaceId: string) {
     try {
-      const result = await apiCall(`/mikrotik/interfaces/${interfaceId}/disable`, {
+      const result = await apiCall(`/api/mikrotik/interfaces/${interfaceId}/disable`, {
         method: 'POST'
       });
       return result;
@@ -216,7 +216,7 @@ export const mikrotikService = {
 
   async removePPPSecret(secretId: string) {
     try {
-      const result = await apiCall(`/mikrotik/ppp/secret/${secretId}`, {
+      const result = await apiCall(`/api/mikrotik/ppp/secret/${secretId}`, {
         method: 'DELETE'
       });
       return result;
@@ -229,7 +229,7 @@ export const mikrotikService = {
   // Wireless Management
   async getWirelessInterfaces() {
     try {
-      const result = await apiCall('/mikrotik/wireless/interfaces');
+      const result = await apiCall('/api/mikrotik/wireless/interfaces');
       return result;
     } catch (error) {
       console.error('Error fetching wireless interfaces:', error);
@@ -239,7 +239,7 @@ export const mikrotikService = {
 
   async enableWireless(interfaceId: string) {
     try {
-      const result = await apiCall(`/mikrotik/wireless/${interfaceId}/enable`, {
+      const result = await apiCall(`/api/mikrotik/wireless/${interfaceId}/enable`, {
         method: 'POST'
       });
       return result;
@@ -251,7 +251,7 @@ export const mikrotikService = {
 
   async disableWireless(interfaceId: string) {
     try {
-      const result = await apiCall(`/mikrotik/wireless/${interfaceId}/disable`, {
+      const result = await apiCall(`/api/mikrotik/wireless/${interfaceId}/disable`, {
         method: 'POST'
       });
       return result;
@@ -284,7 +284,7 @@ export const mikrotikService = {
 
   async addIPAddress(address: string, network: string, interfaceName: string) {
     try {
-      const result = await apiCall('/mikrotik/ip/addresses', {
+      const result = await apiCall('/api/mikrotik/ip/addresses', {
         method: 'POST',
         body: JSON.stringify({ address, network, interface: interfaceName })
       });
@@ -318,7 +318,7 @@ export const mikrotikService = {
 
   async rebootSystem() {
     try {
-      const result = await apiCall('/mikrotik/system/reboot', {
+      const result = await apiCall('/api/mikrotik/system/reboot', {
         method: 'POST'
       });
       return result;
@@ -331,7 +331,7 @@ export const mikrotikService = {
   // Queue Management
   async getSimpleQueues() {
     try {
-      const result = await apiCall('/mikrotik/queue/simple');
+      const result = await apiCall('/api/mikrotik/queue/simple');
       return result;
     } catch (error) {
       console.error('Error fetching simple queues:', error);
@@ -341,7 +341,7 @@ export const mikrotikService = {
 
   async addSimpleQueue(name: string, target: string, maxLimit: string) {
     try {
-      const result = await apiCall('/mikrotik/queue/simple', {
+      const result = await apiCall('/api/mikrotik/queue/simple', {
         method: 'POST',
         body: JSON.stringify({ name, target, maxLimit })
       });
@@ -354,7 +354,7 @@ export const mikrotikService = {
 
   async removeSimpleQueue(queueId: string) {
     try {
-      const result = await apiCall(`/mikrotik/queue/simple/${queueId}`, {
+      const result = await apiCall(`/api/mikrotik/queue/simple/${queueId}`, {
         method: 'DELETE'
       });
       return result;
@@ -367,7 +367,7 @@ export const mikrotikService = {
   // Monitoring
   async getInterfaceTraffic() {
     try {
-      const result = await apiCall(`/mikrotik/monitor/traffic/eth0`);
+      const result = await apiCall(`/api/mikrotik/monitor/traffic/eth0`);
       return result;
     } catch (error) {
       console.error('Error fetching interface traffic:', error);
@@ -377,7 +377,7 @@ export const mikrotikService = {
 
   async getCPUUsage() {
     try {
-      const result = await apiCall(`/mikrotik/monitor/resource`);
+      const result = await apiCall(`/api/mikrotik/monitor/resource`);
       return result;
     } catch (error) {
       console.error('Error fetching CPU usage:', error);
@@ -387,7 +387,7 @@ export const mikrotikService = {
 
   async getMemoryUsage() {
     try {
-      const result = await apiCall(`/mikrotik/monitor/resource`);
+      const result = await apiCall(`/api/mikrotik/monitor/resource`);
       return result;
     } catch (error) {
       console.error('Error fetching memory usage:', error);
