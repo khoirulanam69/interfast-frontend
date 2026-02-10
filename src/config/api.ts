@@ -1,7 +1,9 @@
 
 // API Configuration
+export const API_BASE_URL = 'https://api.interfast.mkaindo.com';
+
 export const API_CONFIG = {
-  BASE_URL: 'https://api.interfast.mkaindo.com',
+  BASE_URL: API_BASE_URL,
   ENDPOINTS: {
     MIKROTIK: {
       TEST_CONNECTION: '/mikrotik/test-connection',
@@ -22,6 +24,14 @@ export const API_CONFIG = {
       REMOVE_USER: '/mikrotik/user',
       DELETE_PPP_SECRET: '/mikrotik/ppp/secret',
       DISCONNECT_PPP_USER: '/mikrotik/ppp/active'
+    },
+    DATABASE: {
+      USERS: '/db/users',
+      PACKAGES: '/db/packages',
+      TRANSACTIONS: '/db/transactions',
+      FINANCIAL_SUMMARY: '/db/financial-summary',
+      ANALYTICS: '/db/analytics',
+      DASHBOARD_STATS: '/db/stats/dashboard'
     }
   }
 };

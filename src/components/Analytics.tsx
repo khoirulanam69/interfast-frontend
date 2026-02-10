@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { supabase } from '@/integrations/supabase/client';
+import { databaseService } from '@/services/databaseService';
 import { useToast } from '@/hooks/use-toast';
 import { TrendingUp, Users, DollarSign } from 'lucide-react';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -28,12 +28,8 @@ const Analytics = () => {
     try {
       setLoading(true);
       
-      // Get users data grouped by month
-      const { data: users, error: usersError } = await supabase
-        .from('users')
-        .select('created_at, price, user_status, payment_status, installation_date, expired_date');
-
-      if (usersError) throw usersError;
+      // Get users data
+      const users = await databaseService.getUsers();
 
       console.log('Users data:', users);
 
@@ -41,7 +37,7 @@ const Analytics = () => {
       const monthlyStats: { [key: string]: MonthlyData } = {};
       
       // First pass: calculate new users per month
-      users?.forEach(user => {
+      users?.forEach((user: any) => {
         const date = new Date(user.created_at);
         const monthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
         const monthName = date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
@@ -60,24 +56,19 @@ const Analytics = () => {
       });
 
       // Second pass: calculate revenue for each month from ALL active users
-      // For each month, count revenue from all users who were active during that month
       Object.keys(monthlyStats).forEach(monthKey => {
         const [year, monthStr] = monthKey.split('-');
         const targetMonth = new Date(parseInt(year), parseInt(monthStr) - 1, 1);
-        const targetMonthEnd = new Date(parseInt(year), parseInt(monthStr), 0); // Last day of the month
+        const targetMonthEnd = new Date(parseInt(year), parseInt(monthStr), 0);
         
         let monthlyRevenue = 0;
         
-        users?.forEach(user => {
+        users?.forEach((user: any) => {
           const installationDate = new Date(user.installation_date);
           const expiredDate = new Date(user.expired_date);
           
-          // Check if user was active during this month
-          // User is active if: installation_date <= last day of month AND expired_date >= first day of month
           const isActiveInMonth = installationDate <= targetMonthEnd && expiredDate >= targetMonth;
           
-          // Calculate revenue from all active users regardless of payment_status
-          // because payment_status is reset monthly but we want to show expected revenue
           if (isActiveInMonth && user.user_status === 'Active') {
             monthlyRevenue += user.price;
           }

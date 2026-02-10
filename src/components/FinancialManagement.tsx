@@ -11,9 +11,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { supabase } from '@/integrations/supabase/client';
+import { databaseService } from '@/services/databaseService';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, Trash2, Edit, ArrowUpCircle, ArrowDownCircle, Wallet, User, Check, ChevronsUpDown } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Trash2, Edit, ArrowUpCircle, ArrowDownCircle, Wallet, User, Check, ChevronsUpDown } from 'lucide-react';
 import { format, addMonths } from 'date-fns';
 import { mikrotikService } from '@/services/mikrotikService';
 import { id } from 'date-fns/locale';
@@ -114,12 +114,7 @@ const FinancialManagement = () => {
 
   const fetchCustomers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('id, name, username_dial, price, expired_date, payment_status, user_status')
-        .order('name', { ascending: true });
-
-      if (error) throw error;
+      const data = await databaseService.getUsers();
       setCustomers((data || []) as Customer[]);
     } catch (error: any) {
       console.error('Error fetching customers:', error);
@@ -140,17 +135,7 @@ const FinancialManagement = () => {
 
   const fetchTransactions = async () => {
     try {
-      const startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
-      const endDate = new Date(selectedYear, selectedMonth, 0).toISOString().split('T')[0];
-
-      const { data, error } = await supabase
-        .from('financial_transactions')
-        .select('*')
-        .gte('transaction_date', startDate)
-        .lte('transaction_date', endDate)
-        .order('transaction_date', { ascending: false });
-
-      if (error) throw error;
+      const data = await databaseService.getTransactions(selectedMonth, selectedYear);
       setTransactions((data || []) as Transaction[]);
     } catch (error: any) {
       toast({
@@ -165,14 +150,7 @@ const FinancialManagement = () => {
 
   const fetchSummary = async () => {
     try {
-      const { data, error } = await supabase
-        .from('financial_summary')
-        .select('*')
-        .eq('month', selectedMonth)
-        .eq('year', selectedYear)
-        .maybeSingle();
-
-      if (error) throw error;
+      const data = await databaseService.getFinancialSummary(selectedMonth, selectedYear);
       setSummary(data as FinancialSummary | null);
     } catch (error: any) {
       console.error('Error fetching summary:', error);
@@ -181,14 +159,8 @@ const FinancialManagement = () => {
 
   const fetchMonthlySummaries = async () => {
     try {
-      const { data, error } = await supabase
-        .from('financial_summary')
-        .select('*')
-        .eq('year', selectedYear)
-        .order('month', { ascending: true });
-
-      if (error) throw error;
-      setMonthlySummaries((data || []) as FinancialSummary[]);
+      const data = await databaseService.getFinancialSummary(undefined, selectedYear);
+      setMonthlySummaries((Array.isArray(data) ? data : []) as FinancialSummary[]);
     } catch (error: any) {
       console.error('Error fetching monthly summaries:', error);
     }
@@ -227,19 +199,10 @@ const FinancialManagement = () => {
       };
 
       if (editingTransaction) {
-        const { error } = await supabase
-          .from('financial_transactions')
-          .update(transactionData)
-          .eq('id', editingTransaction.id);
-
-        if (error) throw error;
+        await databaseService.updateTransaction(editingTransaction.id, transactionData);
         toast({ title: 'Sukses', description: 'Transaksi berhasil diperbarui' });
       } else {
-        const { error } = await supabase
-          .from('financial_transactions')
-          .insert([transactionData]);
-
-        if (error) throw error;
+        await databaseService.createTransaction(transactionData);
 
         // If this is a subscription payment, update the customer data
         if (showCustomerSelector && selectedCustomerId) {
@@ -252,23 +215,13 @@ const FinancialManagement = () => {
             // Check if user was inactive before payment
             const wasInactive = customer.user_status === 'Inactive';
             
-            const { error: updateError } = await supabase
-              .from('users')
-              .update({
+            try {
+              await databaseService.updateUser(selectedCustomerId, {
                 expired_date: format(newExpiredDate, 'yyyy-MM-dd'),
                 payment_status: 'Paid',
                 user_status: 'Active',
-              })
-              .eq('id', selectedCustomerId);
-
-            if (updateError) {
-              console.error('Error updating customer:', updateError);
-              toast({ 
-                title: 'Peringatan', 
-                description: 'Transaksi tersimpan, tapi gagal update status pelanggan',
-                variant: 'destructive',
               });
-            } else {
+
               // If user was inactive, enable PPP user in MikroTik
               if (wasInactive && customer.username_dial) {
                 try {
@@ -293,6 +246,13 @@ const FinancialManagement = () => {
                   description: `Transaksi berhasil & status ${customer.name} diperbarui` 
                 });
               }
+            } catch (updateError) {
+              console.error('Error updating customer:', updateError);
+              toast({ 
+                title: 'Peringatan', 
+                description: 'Transaksi tersimpan, tapi gagal update status pelanggan',
+                variant: 'destructive',
+              });
             }
           }
         } else {
@@ -316,12 +276,7 @@ const FinancialManagement = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('financial_transactions')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
+      await databaseService.deleteTransaction(id);
       toast({ title: 'Sukses', description: 'Transaksi berhasil dihapus' });
       fetchTransactions();
       fetchSummary();
@@ -397,8 +352,8 @@ const FinancialManagement = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Manajemen Keuangan</h1>
-          <p className="text-gray-500">Kelola pemasukan, pengeluaran, dan laba</p>
+          <h1 className="text-2xl font-bold text-foreground">Manajemen Keuangan</h1>
+          <p className="text-muted-foreground">Kelola pemasukan, pengeluaran, dan laba</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={String(selectedMonth)} onValueChange={(v) => setSelectedMonth(Number(v))}>
@@ -432,36 +387,36 @@ const FinancialManagement = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Pemasukan</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Pemasukan</CardTitle>
             <ArrowUpCircle className="h-5 w-5 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{formatRupiah(currentIncome)}</div>
-            <p className="text-xs text-gray-500 mt-1">{monthNames[selectedMonth - 1]} {selectedYear}</p>
+            <p className="text-xs text-muted-foreground mt-1">{monthNames[selectedMonth - 1]} {selectedYear}</p>
           </CardContent>
         </Card>
 
         <Card className="border-l-4 border-l-red-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Pengeluaran</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Pengeluaran</CardTitle>
             <ArrowDownCircle className="h-5 w-5 text-red-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{formatRupiah(currentExpense)}</div>
-            <p className="text-xs text-gray-500 mt-1">{monthNames[selectedMonth - 1]} {selectedYear}</p>
+            <p className="text-xs text-muted-foreground mt-1">{monthNames[selectedMonth - 1]} {selectedYear}</p>
           </CardContent>
         </Card>
 
         <Card className={`border-l-4 ${currentProfit >= 0 ? 'border-l-blue-500' : 'border-l-orange-500'}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">Laba Bersih</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Laba Bersih</CardTitle>
             <Wallet className={`h-5 w-5 ${currentProfit >= 0 ? 'text-blue-500' : 'text-orange-500'}`} />
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${currentProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
               {formatRupiah(currentProfit)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">{monthNames[selectedMonth - 1]} {selectedYear}</p>
+            <p className="text-xs text-muted-foreground mt-1">{monthNames[selectedMonth - 1]} {selectedYear}</p>
           </CardContent>
         </Card>
       </div>
@@ -479,7 +434,7 @@ const FinancialManagement = () => {
             if (!open) resetForm();
           }}>
             <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
+              <Button className="bg-primary hover:bg-primary/90">
                 <Plus className="h-4 w-4 mr-2" />
                 Tambah Transaksi
               </Button>
@@ -583,7 +538,7 @@ const FinancialManagement = () => {
                                     customer.id.toLowerCase().includes(query)
                                   );
                                 })
-                                .slice(0, 50) // Limit to 50 results for performance
+                                .slice(0, 50)
                                 .map((customer) => (
                                   <CommandItem
                                     key={customer.id}
@@ -663,7 +618,7 @@ const FinancialManagement = () => {
                 </div>
 
                 <DialogFooter>
-                  <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
+                  <Button type="submit" className="w-full">
                     {editingTransaction ? 'Perbarui' : 'Simpan'}
                   </Button>
                 </DialogFooter>
@@ -683,10 +638,10 @@ const FinancialManagement = () => {
             <CardContent>
               {loading ? (
                 <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                 </div>
               ) : transactions.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-muted-foreground">
                   Belum ada transaksi untuk periode ini
                 </div>
               ) : (
@@ -812,7 +767,7 @@ const FinancialManagement = () => {
                       );
                     })}
                     {/* Total Row */}
-                    <TableRow className="bg-gray-50 font-bold">
+                    <TableRow className="bg-muted font-bold">
                       <TableCell>TOTAL</TableCell>
                       <TableCell className="text-right text-green-600">
                         {formatRupiah(monthlySummaries.reduce((sum, s) => sum + s.total_income, 0))}

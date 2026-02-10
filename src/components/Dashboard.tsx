@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, DollarSign, AlertTriangle, TrendingUp } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { databaseService } from '@/services/databaseService';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -17,40 +16,8 @@ const Dashboard = () => {
     const fetchStats = async () => {
       try {
         setLoading(true);
-        
-        // Fetch all users
-        const { data: users, error } = await supabase
-          .from('users')
-          .select('user_status, price, payment_status');
-
-        if (error) {
-          console.error('Error fetching users:', error);
-          return;
-        }
-
-        if (!users) {
-          setStats({
-            totalUsers: 0,
-            activeUsers: 0,
-            inactiveUsers: 0,
-            totalRevenue: 0,
-          });
-          return;
-        }
-
-        const totalUsers = users.length;
-        const activeUsers = users.filter(user => user.user_status === 'Active').length;
-        const inactiveUsers = users.filter(user => user.user_status === 'Inactive').length;
-        const totalRevenue = users
-          .filter(user => user.user_status === 'Active' && user.payment_status === 'Paid')
-          .reduce((sum, user) => sum + (user.price || 0), 0);
-
-        setStats({
-          totalUsers,
-          activeUsers,
-          inactiveUsers,
-          totalRevenue,
-        });
+        const data = await databaseService.getDashboardStats();
+        setStats(data);
       } catch (error) {
         console.error('Error in fetchStats:', error);
       } finally {

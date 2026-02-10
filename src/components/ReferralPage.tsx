@@ -1,15 +1,14 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
+import { databaseService } from '@/services/databaseService';
 import { Users, DollarSign, Search } from 'lucide-react';
 
 const ReferralPage = () => {
-  const [referralData, setReferralData] = useState([]);
-  const [filteredReferralData, setFilteredReferralData] = useState([]);
+  const [referralData, setReferralData] = useState<any[]>([]);
+  const [filteredReferralData, setFilteredReferralData] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState({
     totalReferrers: 0,
@@ -31,7 +30,7 @@ const ReferralPage = () => {
       return;
     }
 
-    const filtered = referralData.filter(referrer =>
+    const filtered = referralData.filter((referrer: any) =>
       referrer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       referrer.nik.includes(searchTerm) ||
       referrer.package.toLowerCase().includes(searchTerm.toLowerCase())
@@ -42,21 +41,16 @@ const ReferralPage = () => {
 
   const fetchReferralData = async () => {
     try {
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
+      const users = await databaseService.getUsers();
 
       // Process referral data
-      const referrers = users.filter(user => 
-        users.some(u => u.referred_by === user.id)
+      const referrers = users.filter((user: any) => 
+        users.some((u: any) => u.referred_by === user.id)
       );
 
-      const referralStats = referrers.map(referrer => {
-        const referrals = users.filter(u => u.referred_by === referrer.id);
-        const activeReferrals = referrals.filter(r => r.user_status === 'Active');
+      const referralStats = referrers.map((referrer: any) => {
+        const referrals = users.filter((u: any) => u.referred_by === referrer.id);
+        const activeReferrals = referrals.filter((r: any) => r.user_status === 'Active');
         const discount = activeReferrals.length * 10000;
         const finalPrice = referrer.price - discount;
 
@@ -75,8 +69,8 @@ const ReferralPage = () => {
       
       setStats({
         totalReferrers: referrers.length,
-        totalReferrals: users.filter(u => u.referred_by).length,
-        totalDiscounts: referralStats.reduce((sum, r) => sum + r.discount, 0)
+        totalReferrals: users.filter((u: any) => u.referred_by).length,
+        totalDiscounts: referralStats.reduce((sum: number, r: any) => sum + r.discount, 0)
       });
 
     } catch (error) {
@@ -93,7 +87,7 @@ const ReferralPage = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const colors = {
+    const colors: Record<string, string> = {
       'Active': 'bg-green-100 text-green-800',
       'Inactive': 'bg-yellow-100 text-yellow-800',
       'Terminate': 'bg-red-100 text-red-800'
@@ -181,7 +175,7 @@ const ReferralPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredReferralData.map((referrer) => (
+                  {filteredReferralData.map((referrer: any) => (
                     <TableRow key={referrer.id}>
                       <TableCell>
                         <div>
@@ -233,7 +227,7 @@ const ReferralPage = () => {
           </CardHeader>
           <CardContent className="w-full">
             <div className="space-y-6">
-              {filteredReferralData.map((referrer) => (
+              {filteredReferralData.map((referrer: any) => (
                 <div key={referrer.id} className="border rounded-lg p-4">
                   <h3 className="font-semibold text-lg mb-3">
                     {referrer.name} - Referrals ({referrer.totalReferrals})
@@ -251,7 +245,7 @@ const ReferralPage = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {referrer.referrals.map((referral) => (
+                          {referrer.referrals.map((referral: any) => (
                             <TableRow key={referral.id}>
                               <TableCell className="text-sm truncate">{referral.name}</TableCell>
                               <TableCell className="font-mono text-xs">{referral.nik}</TableCell>

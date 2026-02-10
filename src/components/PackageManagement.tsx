@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Plus, Edit, Trash2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { databaseService } from '@/services/databaseService';
 import { useToast } from '@/hooks/use-toast';
 
 interface Package {
@@ -37,12 +36,7 @@ const PackageManagement = () => {
 
   const fetchPackages = async () => {
     try {
-      const { data, error } = await supabase
-        .from('packages')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await databaseService.getPackages();
       setPackages(data || []);
     } catch (error) {
       console.error('Error fetching packages:', error);
@@ -60,32 +54,14 @@ const PackageManagement = () => {
 
     try {
       if (editingPackage) {
-        const { error } = await supabase
-          .from('packages')
-          .update({
-            name: formData.name,
-            bandwidth: formData.bandwidth,
-            price: formData.price,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingPackage.id);
-
-        if (error) throw error;
+        await databaseService.updatePackage(editingPackage.id, formData);
         
         toast({
           title: "Success",
           description: "Package updated successfully",
         });
       } else {
-        const { error } = await supabase
-          .from('packages')
-          .insert({
-            name: formData.name,
-            bandwidth: formData.bandwidth,
-            price: formData.price
-          });
-
-        if (error) throw error;
+        await databaseService.createPackage(formData);
         
         toast({
           title: "Success",
@@ -112,12 +88,7 @@ const PackageManagement = () => {
     if (!confirm('Are you sure you want to delete this package?')) return;
 
     try {
-      const { error } = await supabase
-        .from('packages')
-        .delete()
-        .eq('id', packageId);
-
-      if (error) throw error;
+      await databaseService.deletePackage(packageId);
       
       toast({
         title: "Success",

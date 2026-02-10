@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Activity } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts';
-import { supabase } from '@/integrations/supabase/client';
+import { databaseService } from '@/services/databaseService';
 import { mikrotikService } from '@/services/mikrotikService';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,13 +28,7 @@ const UserDetail = () => {
     
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('nik', nik)
-        .single();
-
-      if (error) throw error;
+      const data = await databaseService.getUserByNik(nik);
       setUser(data);
     } catch (error) {
       console.error('Error fetching user:', error);

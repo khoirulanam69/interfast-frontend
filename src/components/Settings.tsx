@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { User, Settings as SettingsIcon, CreditCard } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 import AdminUserForm from './AdminUserForm';
 
 const Settings = () => {
@@ -20,7 +18,6 @@ const Settings = () => {
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const handleAccountUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +43,7 @@ const Settings = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
+        <h1 className="text-3xl font-bold text-foreground">Settings</h1>
       </div>
 
       <Tabs defaultValue="account" className="w-full">
@@ -86,9 +83,9 @@ const Settings = () => {
                   <Input
                     id="email"
                     type="email"
-                    value={user?.email || ''}
-                    disabled
-                    placeholder="Current email"
+                    value={accountData.email}
+                    onChange={(e) => setAccountData({ ...accountData, email: e.target.value })}
+                    placeholder="Enter your email"
                   />
                 </div>
                 <div>
@@ -140,7 +137,7 @@ const Settings = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <p className="text-gray-600">Available payment methods:</p>
+                <p className="text-muted-foreground">Available payment methods:</p>
                 <div className="grid grid-cols-3 gap-4">
                   {['Shopee Pay', 'OVO', 'DANA', 'Indomart', 'Alfamart', 'BCA', 'BNI', 'BRI', 'Mandiri'].map((method) => (
                     <div key={method} className="p-4 border rounded-lg text-center">
@@ -148,9 +145,9 @@ const Settings = () => {
                     </div>
                   ))}
                 </div>
-                <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                  <h3 className="font-semibold text-blue-900">Payment Destination</h3>
-                  <p className="text-blue-800">BCA 1240640712 — Muhammad Khoirul Anam</p>
+                <div className="mt-6 p-4 bg-primary/10 rounded-lg">
+                  <h3 className="font-semibold text-primary">Payment Destination</h3>
+                  <p className="text-foreground">BCA 1240640712 — Muhammad Khoirul Anam</p>
                 </div>
               </div>
             </CardContent>

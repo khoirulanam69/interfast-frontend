@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { supabase } from '@/integrations/supabase/client';
+import { databaseService } from '@/services/databaseService';
 import { useToast } from '@/hooks/use-toast';
 
 import { Search, Plus, Edit, Trash2, MessageSquare, Eye, Filter, Download, Upload, ArrowUpDown } from 'lucide-react';
@@ -61,12 +61,7 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await databaseService.getUsers();
       setUsers(data || []);
     } catch (error: any) {
       toast({
@@ -133,12 +128,7 @@ const UserManagement = () => {
 
   const handleDelete = async (user: User) => {
     try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', user.id);
-
-      if (error) throw error;
+      await databaseService.deleteUser(user.id);
 
       toast({
         title: "Success",
@@ -278,11 +268,7 @@ Tim Interfast Media`;
         }));
 
         // Insert data to database
-        const { error } = await supabase
-          .from('users')
-          .insert(usersToImport);
-
-        if (error) throw error;
+        await databaseService.bulkInsertUsers(usersToImport);
 
         toast({
           title: "Success",

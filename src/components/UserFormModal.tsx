@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/integrations/supabase/client';
+import { databaseService } from '@/services/databaseService';
 import { useToast } from '@/hooks/use-toast';
 import { mikrotikService } from '@/services/mikrotikService';
 
@@ -18,7 +17,7 @@ interface UserFormModalProps {
 }
 
 const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalProps) => {
-  const [packages, setPackages] = useState([]);
+  const [packages, setPackages] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     nik: '',
     name: '',
@@ -46,12 +45,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
 
   const fetchPackages = async () => {
     try {
-      const { data, error } = await supabase
-        .from('packages')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
+      const data = await databaseService.getPackages();
       setPackages(data || []);
     } catch (error) {
       console.error('Error fetching packages:', error);
@@ -156,12 +150,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
 
       if (user) {
         // Update existing user
-        const { error } = await supabase
-          .from('users')
-          .update(dataToSubmit)
-          .eq('id', user.id);
-
-        if (error) throw error;
+        await databaseService.updateUser(user.id, dataToSubmit);
         
         toast({
           title: "Success",
@@ -175,19 +164,13 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         const pppoeUsername = generatePPPoEUsername(formData.name, formData.address);
         const pppoePassword = generatePPPoEPassword(formData.nik);
 
-        const { data: newUser, error } = await supabase
-          .from('users')
-          .insert({
-            ...dataToSubmit,
-            username_dial: pppoeUsername,
-            password_pppoe: pppoePassword,
-            payment_status: paymentStatus,
-            user_status: 'Active'
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
+        await databaseService.createUser({
+          ...dataToSubmit,
+          username_dial: pppoeUsername,
+          password_pppoe: pppoePassword,
+          payment_status: paymentStatus,
+          user_status: 'Active'
+        });
 
         // Create PPPoE Secret in MikroTik
         try {
