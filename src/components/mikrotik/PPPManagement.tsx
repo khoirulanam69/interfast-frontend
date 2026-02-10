@@ -4,14 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Users, 
-  UserCheck, 
   RefreshCw,
-  Trash2,
-  UserX
+  UserX,
+  Trash2
 } from 'lucide-react';
 import { mikrotikService } from '@/services/mikrotikService';
 
@@ -21,21 +19,26 @@ const PPPManagement = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const fetchPPPSecrets = async () => {
+  const fetchPPPData = async () => {
     setLoading(true);
     try {
-      const result = await mikrotikService.getPPPSecrets();
-      if (result.success) {
-        setPppSecrets(result.data || []);
-        // Removed the success toast notification
-      } else {
-        throw new Error(result.message);
+      const [secretsResult, activeResult] = await Promise.all([
+        mikrotikService.getPPPSecrets(),
+        mikrotikService.getPPPActive()
+      ]);
+      
+      if (secretsResult.success) {
+        setPppSecrets(secretsResult.data || []);
+      }
+      
+      if (activeResult.success) {
+        setPppActive(activeResult.data || []);
       }
     } catch (error) {
-      console.error('Error fetching PPP secrets:', error);
+      console.error('Error fetching PPP data:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch PPP secrets",
+        description: "Failed to fetch PPP data",
         variant: "destructive",
       });
     } finally {
@@ -43,37 +46,19 @@ const PPPManagement = () => {
     }
   };
 
-  const fetchPPPActive = async () => {
-    setLoading(true);
-    try {
-      const result = await mikrotikService.getPPPActive();
-      if (result.success) {
-        setPppActive(result.data || []);
-        // Removed the success toast notification
-      } else {
-        throw new Error(result.message);
-      }
-    } catch (error) {
-      console.error('Error fetching PPP active:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch active PPP connections",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
+  const handleRemoveSecret = async (secretId: string, username: string) => {
+    if (!confirm(`Are you sure you want to remove PPP secret for ${username}?`)) {
+      return;
     }
-  };
-
-  const handleRemoveSecret = async (secretId: string, secretName: string) => {
+    
     try {
       const result = await mikrotikService.removePPPSecret(secretId);
       if (result.success) {
         toast({
           title: "Success",
-          description: `PPP secret ${secretName} removed successfully`,
+          description: `PPP secret for ${username} removed successfully`,
         });
-        fetchPPPSecrets();
+        fetchPPPData();
       } else {
         throw new Error(result.message);
       }
@@ -81,206 +66,166 @@ const PPPManagement = () => {
       console.error('Error removing PPP secret:', error);
       toast({
         title: "Error",
-        description: `Failed to remove PPP secret ${secretName}`,
+        description: `Failed to remove PPP secret for ${username}`,
         variant: "destructive",
       });
     }
   };
 
-  const handleDisconnectUser = async (activeId: string, userName: string) => {
+  const handleDisconnectUser = async (username: string) => {
+    if (!confirm(`Are you sure you want to disconnect ${username}?`)) {
+      return;
+    }
+    
     try {
-      const result = await mikrotikService.disconnectPPPUser(activeId);
+      const result = await mikrotikService.disconnectPPPUser(username);
       if (result.success) {
         toast({
           title: "Success",
-          description: `User ${userName} disconnected successfully`,
+          description: `User ${username} disconnected successfully`,
         });
-        fetchPPPActive();
+        fetchPPPData();
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
-      console.error('Error disconnecting PPP user:', error);
+      console.error('Error disconnecting user:', error);
       toast({
         title: "Error",
-        description: `Failed to disconnect user ${userName}`,
+        description: `Failed to disconnect user ${username}`,
         variant: "destructive",
       });
     }
   };
 
-  const getStatusBadge = (disabled: boolean) => {
-    if (disabled) {
-      return <Badge variant="destructive">Disabled</Badge>;
-    }
-    return <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>;
-  };
-
   useEffect(() => {
-    fetchPPPSecrets();
-    fetchPPPActive();
+    fetchPPPData();
   }, []);
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="secrets" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="secrets">PPP Secrets</TabsTrigger>
-          <TabsTrigger value="active">Active Connections</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="secrets">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  PPP Secrets
-                </CardTitle>
-                <Button 
-                  onClick={fetchPPPSecrets}
-                  disabled={loading}
-                  variant="outline"
-                  size="sm"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Service</TableHead>
-                        <TableHead>Profile</TableHead>
-                        <TableHead>Local Address</TableHead>
-                        <TableHead>Remote Address</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pppSecrets.map((secret: any) => (
-                        <TableRow key={secret['.id']}>
-                          <TableCell className="font-medium">{secret.name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{secret.service || 'any'}</Badge>
-                          </TableCell>
-                          <TableCell>{secret.profile || 'default'}</TableCell>
-                          <TableCell>{secret['local-address'] || 'N/A'}</TableCell>
-                          <TableCell>{secret['remote-address'] || 'N/A'}</TableCell>
-                          <TableCell>
-                            {getStatusBadge(secret.disabled === 'true')}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleRemoveSecret(secret['.id'], secret.name)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  
-                  {pppSecrets.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      No PPP secrets found
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">PPP Management</h2>
+        <Button 
+          onClick={fetchPPPData}
+          disabled={loading}
+          variant="outline"
+          size="sm"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
 
-        <TabsContent value="active">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <UserCheck className="h-5 w-5" />
-                  Active PPP Connections
-                </CardTitle>
-                <Button 
-                  onClick={fetchPPPActive}
-                  disabled={loading}
-                  variant="outline"
-                  size="sm"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              PPP Secrets ({pppSecrets.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Service</TableHead>
-                        <TableHead>Caller ID</TableHead>
-                        <TableHead>Address</TableHead>
-                        <TableHead>Uptime</TableHead>
-                        <TableHead>Encoding</TableHead>
-                        <TableHead>Actions</TableHead>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Profile</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pppSecrets.map((secret: any) => (
+                      <TableRow key={secret['.id']}>
+                        <TableCell className="font-medium">{secret.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{secret.profile || 'Default'}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRemoveSecret(secret['.id'], secret.name)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pppActive.map((active: any) => (
-                        <TableRow key={active['.id']}>
-                          <TableCell className="font-medium">{active.name}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{active.service}</Badge>
-                          </TableCell>
-                          <TableCell>{active['caller-id'] || 'N/A'}</TableCell>
-                          <TableCell>{active.address || 'N/A'}</TableCell>
-                          <TableCell>{active.uptime || 'N/A'}</TableCell>
-                          <TableCell>{active.encoding || 'N/A'}</TableCell>
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => handleDisconnectUser(active['.id'], active.name)}
-                              className="h-8 w-8 p-0"
-                            >
-                              <UserX className="h-3 w-3" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  
-                  {pppActive.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      No active PPP connections
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                    ))}
+                  </TableBody>
+                </Table>
+                
+                {pppSecrets.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    No PPP secrets found
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Active Connections ({pppActive.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Address</TableHead>
+                      <TableHead>Uptime</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pppActive.map((connection: any) => (
+                      <TableRow key={connection['.id']}>
+                        <TableCell className="font-medium">{connection.name}</TableCell>
+                        <TableCell className="font-mono text-xs">{connection.address || 'N/A'}</TableCell>
+                        <TableCell>{connection.uptime || 'N/A'}</TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDisconnectUser(connection.name)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <UserX className="h-3 w-3" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                
+                {pppActive.length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    No active connections found
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

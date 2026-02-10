@@ -1,19 +1,11 @@
 
-import React, { useState } from 'react';
-import { Outlet, Link, useLocation, Navigate } from 'react-router-dom';
-import { cn } from '@/lib/utils';
+import React, { useState, useEffect } from 'react';
+import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { 
-  LayoutDashboard, 
-  Users, 
-  UserPlus, 
-  Settings, 
-  Menu,
-  Package,
-  LogOut,
-  Router
-} from 'lucide-react';
+import { Menu, X, Home, Users, Package, Settings, BarChart3, UserPlus, LogOut, Wallet } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,155 +16,157 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+} from '@/components/ui/alert-dialog';
 
 const Layout = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
   const location = useLocation();
-  const [isOpen, setIsOpen] = useState(false);
-  const { user, loading } = useAuth();
-  const { toast } = useToast();
+  const { user, loading, signOut } = useAuth();
 
-  // Show loading spinner while checking authentication
+  // Show loading state while checking authentication
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
 
-  // Redirect to login if user is not authenticated
+  // Redirect to login if not authenticated
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      toast({
-        title: "Success",
-        description: "Logged out successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to logout",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const navigation = [
-    { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'User Management', href: '/users', icon: Users },
-    { name: 'Referral', href: '/referral', icon: UserPlus },
-    { name: 'Package Management', href: '/packages', icon: Package },
-    { name: 'MikroTik Management', href: '/mikrotik', icon: Router },
-    { name: 'Settings', href: '/settings', icon: Settings },
+  const menuItems = [
+    { name: 'Dashboard', icon: Home, path: '/' },
+    { name: 'User Management', icon: Users, path: '/users' },
+    { name: 'Package Management', icon: Package, path: '/packages' },
+    { name: 'Keuangan', icon: Wallet, path: '/finance' },
+    { name: 'Analytics', icon: BarChart3, path: '/analytics' },
+    { name: 'Referral Program', icon: UserPlus, path: '/referrals' },
+    { name: 'Settings', icon: Settings, path: '/settings' },
   ];
 
-  const NavItems = ({ onItemClick }: { onItemClick?: () => void }) => (
-    <>
-      {navigation.map((item) => {
-        const isActive = location.pathname === item.href;
-        return (
-          <Link
-            key={item.name}
-            to={item.href}
-            onClick={onItemClick}
-            className={cn(
-              'flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors',
-              isActive
-                ? 'bg-blue-100 text-blue-700'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            )}
-          >
-            <item.icon className="mr-3 h-5 w-5" />
-            {item.name}
-          </Link>
-        );
-      })}
-      
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="ghost"
-            className="w-full justify-start px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-          >
-            <LogOut className="mr-3 h-5 w-5" />
-            Logout
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Konfirmasi Logout</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin keluar dari aplikasi?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleLogout}>
-              Ya, Logout
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    setSidebarOpen(false);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   return (
-    <div className="flex min-h-screen bg-gray-50 relative">
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 lg:z-50">
-        <div className="flex flex-col flex-grow pt-5 bg-white overflow-y-auto border-r shadow-sm">
-          <div className="flex items-center flex-shrink-0 px-4">
-            <h1 className="text-xl font-bold text-gray-900">Interfast Media</h1>
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
+      {/* Sidebar */}
+      <div className={cn(
+        "fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+        sidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="flex items-center justify-between h-16 px-4 border-b">
+          <h1 className="text-xl font-semibold text-gray-800">Interfast Media</h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X className="h-6 w-6" />
+          </Button>
+        </div>
+        
+        <nav className="mt-8 flex-1">
+          <div className="px-4 space-y-2">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              
+              return (
+                <Button
+                  key={item.name}
+                  variant={isActive ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start",
+                    isActive && "bg-blue-600 text-white hover:bg-blue-700"
+                  )}
+                  onClick={() => handleNavigation(item.path)}
+                >
+                  <Icon className="mr-3 h-5 w-5" />
+                  {item.name}
+                </Button>
+              );
+            })}
           </div>
-          <div className="mt-8 flex-grow flex flex-col">
-            <nav className="flex-1 px-2 space-y-1">
-              <NavItems />
-            </nav>
-          </div>
+        </nav>
+
+        {/* Logout Button with Modal */}
+        <div className="p-4 border-t">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                <LogOut className="mr-3 h-5 w-5" />
+                Logout
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure you want to logout?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  You will be redirected to the login page and will need to sign in again to access the dashboard.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleSignOut}>
+                  Logout
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 lg:ml-64 w-full overflow-x-auto">
-        {/* Mobile Header */}
-        <div className="lg:hidden flex items-center justify-between p-3 sm:p-4 bg-white border-b shadow-sm sticky top-0 z-50">
-          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Interfast Media</h1>
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-64">
-              <div className="flex flex-col h-full">
-                <div className="flex items-center mb-8">
-                  <h1 className="text-xl font-bold text-gray-900">Interfast Media</h1>
-                </div>
-                <nav className="flex-1 space-y-1">
-                  <NavItems onItemClick={() => setIsOpen(false)} />
-                </nav>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
+      {/* Main content */}
+      <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b h-16 flex items-center justify-between px-4 lg:px-6">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="lg:hidden"
+            onClick={() => setSidebarOpen(true)}
+          >
+            <Menu className="h-6 w-6" />
+          </Button>
+          
+          <div className="flex items-center space-x-4">
+            <span className="text-sm font-medium text-blue-600">{user.email}</span>
+          </div>
+        </header>
 
-        {/* Page Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
-          <div className="py-4 sm:py-6">
-            <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
-              <Outlet />
-            </div>
+        {/* Page content */}
+        <main className="flex-1 overflow-hidden">
+          <div className="h-full overflow-auto p-4 lg:p-6">
+            <Outlet />
           </div>
         </main>
       </div>
+
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
     </div>
   );
 };

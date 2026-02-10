@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { mikrotikService } from '@/services/mikrotikService';
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -30,7 +31,10 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     phone: '',
     package: 'Interfast Bronze' as 'Interfast Bronze' | 'Interfast Silver' | 'Interfast Gold' | 'Interfast Platinum',
     price: 100000,
-    referred_by: null as string | null
+    referred_by: null as string | null,
+    installation_date: '',
+    expired_date: '',
+    username_dial: ''
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -71,6 +75,20 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     return diffDays <= 3;
   };
 
+  // Generate PPPoE username: [name]-[address] (sanitized)
+  const generatePPPoEUsername = (name: string, address: string) => {
+    const sanitize = (str: string) => str
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .substring(0, 20);
+    return `${sanitize(name)}-${sanitize(address)}`;
+  };
+
+  // Generate PPPoE password: last 6 digits of NIK
+  const generatePPPoEPassword = (nik: string) => {
+    return nik.slice(-6);
+  };
+
   useEffect(() => {
     if (user) {
       setFormData({
@@ -85,10 +103,13 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         phone: user.phone || '',
         package: user.package || 'Interfast Bronze',
         price: user.price || 100000,
-        referred_by: user.referred_by || null
+        referred_by: user.referred_by || null,
+        installation_date: user.installation_date || '',
+        expired_date: user.expired_date || '',
+        username_dial: user.username_dial || ''
       });
     } else {
-      // Reset form for new user
+      // Reset form for new user - completely empty
       setFormData({
         nik: '',
         name: '',
@@ -101,7 +122,10 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         phone: '',
         package: 'Interfast Bronze',
         price: 100000,
-        referred_by: null
+        referred_by: null,
+        installation_date: '',
+        expired_date: '',
+        username_dial: ''
       });
     }
   }, [user]);
@@ -124,11 +148,14 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         phone: formData.phone,
         package: formData.package,
         price: formData.price,
-        referred_by: formData.referred_by === 'none' ? null : formData.referred_by
+        referred_by: formData.referred_by === 'none' ? null : formData.referred_by,
+        installation_date: formData.installation_date,
+        expired_date: formData.expired_date,
+        username_dial: formData.username_dial
       };
 
       if (user) {
-        // Update existing user - DO NOT include username_dial, installation_date, expired_date, user_status
+        // Update existing user
         const { error } = await supabase
           .from('users')
           .update(dataToSubmit)
@@ -141,34 +168,60 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
           description: "User updated successfully",
         });
       } else {
-        // Create new user - auto-generate dates and username_dial, set status to Active
-        const installationDate = new Date().toISOString().split('T')[0];
-        const expiredDate = generateExpiredDate(installationDate);
-        const paymentStatus = shouldSetUnpaid(expiredDate) ? 'Unpaid' : 'Paid';
+        // Create new user
+        const paymentStatus = shouldSetUnpaid(formData.expired_date) ? 'Unpaid' : 'Paid';
+        
+        // Generate PPPoE credentials
+        const pppoeUsername = generatePPPoEUsername(formData.name, formData.address);
+        const pppoePassword = generatePPPoEPassword(formData.nik);
 
-        const { error } = await supabase
+        const { data: newUser, error } = await supabase
           .from('users')
           .insert({
             ...dataToSubmit,
-            installation_date: installationDate,
-            expired_date: expiredDate,
+            username_dial: pppoeUsername,
+            password_pppoe: pppoePassword,
             payment_status: paymentStatus,
-            user_status: 'Active', // Always set to Active for new users
-            username_dial: '' // Will be auto-generated by trigger
-          });
+            user_status: 'Active'
+          })
+          .select()
+          .single();
 
         if (error) throw error;
-        
-        toast({
-          title: "Success",
-          description: "User created successfully with Active status",
-        });
+
+        // Create PPPoE Secret in MikroTik
+        try {
+          const mikrotikResult = await mikrotikService.createPPPSecret(
+            pppoeUsername,
+            pppoePassword,
+            formData.package
+          );
+
+          if (mikrotikResult.success) {
+            toast({
+              title: "Success",
+              description: `User created and PPPoE Secret registered in MikroTik (${pppoeUsername})`,
+            });
+          } else {
+            toast({
+              title: "Partial Success",
+              description: `User created but failed to register in MikroTik: ${mikrotikResult.message}`,
+              variant: "destructive",
+            });
+          }
+        } catch (mikrotikError: any) {
+          console.error('MikroTik error:', mikrotikError);
+          toast({
+            title: "Partial Success",
+            description: `User created but MikroTik registration failed: ${mikrotikError.message}`,
+            variant: "destructive",
+          });
+        }
       }
 
       onSave();
       onClose();
     } catch (error: any) {
-      console.error('Error saving user:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to save user",
@@ -195,6 +248,9 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{user ? 'Edit User' : 'Add New User'}</DialogTitle>
+          <DialogDescription>
+            {user ? 'Update user information below.' : 'Fill in the information to create a new user.'}
+          </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -226,6 +282,16 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="username_dial">Username Dial</Label>
+              <Input
+                id="username_dial"
+                value={formData.username_dial}
+                onChange={(e) => setFormData({ ...formData, username_dial: e.target.value })}
+                placeholder="Enter username dial"
               />
             </div>
 
@@ -302,6 +368,28 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
                 type="number"
                 value={formData.price}
                 onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="installation_date">Installation Date</Label>
+              <Input
+                id="installation_date"
+                type="date"
+                value={formData.installation_date}
+                onChange={(e) => setFormData({ ...formData, installation_date: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="expired_date">Expired Date</Label>
+              <Input
+                id="expired_date"
+                type="date"
+                value={formData.expired_date}
+                onChange={(e) => setFormData({ ...formData, expired_date: e.target.value })}
                 required
               />
             </div>
