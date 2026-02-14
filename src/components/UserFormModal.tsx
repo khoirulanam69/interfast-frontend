@@ -34,7 +34,6 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     referred_by: null as string | null,
     installation_date: '',
     expired_date: '',
-    username_dial: ''
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -70,13 +69,23 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     return diffDays <= 3;
   };
 
-  // Generate PPPoE username: [name]-[address] (sanitized)
-  const generatePPPoEUsername = (name: string, address: string) => {
+  // Generate PPPoE username: name-address (lowercase, no spaces, only alphanumeric, dot, hyphen)
+  const generatePPPoEUsername = (name: string, address: string, existingUsers: any[]) => {
     const sanitize = (str: string) => str
       .toLowerCase()
-      .replace(/[^a-z0-9]/g, '')
-      .substring(0, 20);
-    return `${sanitize(name)}-${sanitize(address)}`;
+      .replace(/\s+/g, '')
+      .replace(/[^a-z0-9.\-]/g, '');
+    const base = `${sanitize(name)}-${sanitize(address)}`;
+    
+    // Check uniqueness against existing users
+    const existingUsernames = existingUsers.map(u => u.username_dial);
+    if (!existingUsernames.includes(base)) return base;
+    
+    let counter = 2;
+    while (existingUsernames.includes(`${base}${counter}`)) {
+      counter++;
+    }
+    return `${base}${counter}`;
   };
 
   // Generate PPPoE password: last 6 digits of NIK
@@ -101,7 +110,6 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         referred_by: user.referred_by || null,
         installation_date: toDateInputWIB(user.installation_date || ''),
         expired_date: toDateInputWIB(user.expired_date || ''),
-        username_dial: user.username_dial || ''
       });
     } else {
       // Reset form for new user - completely empty
@@ -120,7 +128,6 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         referred_by: null,
         installation_date: '',
         expired_date: '',
-        username_dial: ''
       });
     }
   }, [user]);
@@ -146,7 +153,6 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         referred_by: formData.referred_by === 'none' ? null : formData.referred_by,
         installation_date: formData.installation_date,
         expired_date: formData.expired_date,
-        username_dial: formData.username_dial
       };
 
       if (user) {
@@ -162,10 +168,10 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         const paymentStatus = shouldSetUnpaid(formData.expired_date) ? 'Unpaid' : 'Paid';
         
         // Generate PPPoE credentials
-        const pppoeUsername = generatePPPoEUsername(formData.name, formData.address);
+        const pppoeUsername = generatePPPoEUsername(formData.name, formData.address, users);
         const pppoePassword = generatePPPoEPassword(formData.nik);
 
-        await databaseService.createUser({
+        const createdUser = await databaseService.createUser({
           ...dataToSubmit,
           username_dial: pppoeUsername,
           password_pppoe: pppoePassword,
@@ -173,12 +179,27 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
           user_status: 'Active'
         });
 
+        // Auto-create installation transaction
+        try {
+          await databaseService.createTransaction({
+            transaction_type: 'income',
+            category: 'installation',
+            amount: formData.price,
+            transaction_date: formData.installation_date,
+            description: `Pembayaran biaya instalasi pelanggan ${formData.name}`,
+            user_id: createdUser?.id || null,
+          });
+        } catch (txError: any) {
+          console.error('Auto transaction error:', txError);
+          // Non-blocking: user was created, just log the error
+        }
+
         // Create PPPoE Secret in MikroTik
         try {
           const mikrotikResult = await mikrotikService.createPPPSecret(
             pppoeUsername,
             pppoePassword,
-            formData.package
+            formData.package.toLowerCase()
           );
 
           if (mikrotikResult.success) {
@@ -266,16 +287,6 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="username_dial">Username Dial</Label>
-              <Input
-                id="username_dial"
-                value={formData.username_dial}
-                onChange={(e) => setFormData({ ...formData, username_dial: e.target.value })}
-                placeholder="Enter username dial"
               />
             </div>
 
