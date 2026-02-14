@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { formatDateWIB } from '@/utils/dateUtils';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -153,10 +154,10 @@ const UserDetail = () => {
             <div><strong>Status:</strong> {user.user_status}</div>
             <div><strong>Payment:</strong> {user.payment_status}</div>
             {user.installation_date && (
-              <div><strong>Installation Date:</strong> {new Date(user.installation_date).toLocaleDateString()}</div>
+              <div><strong>Installation Date:</strong> {formatDateWIB(user.installation_date)}</div>
             )}
             {user.expired_date && (
-              <div><strong>Expired Date:</strong> {new Date(user.expired_date).toLocaleDateString()}</div>
+              <div><strong>Expired Date:</strong> {formatDateWIB(user.expired_date)}</div>
             )}
           </CardContent>
         </Card>

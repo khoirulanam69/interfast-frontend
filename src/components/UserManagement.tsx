@@ -10,6 +10,7 @@ import { databaseService } from '@/services/databaseService';
 import { useToast } from '@/hooks/use-toast';
 
 import { Search, Plus, Edit, Trash2, MessageSquare, Eye, Filter, Download, Upload, ArrowUpDown } from 'lucide-react';
+import { formatDateWIB, formatDateForMessage, toDateInputWIB, getTodayWIB } from '@/utils/dateUtils';
 import UserFormModal from './UserFormModal';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -155,14 +156,7 @@ const UserManagement = () => {
       }).format(amount);
     };
 
-    const formatDate = (dateString: string) => {
-      if (!dateString) return '';
-      const date = new Date(dateString);
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}-${month}-${year}`;
-    };
+    const formatDate = formatDateForMessage;
 
     const message = `Yth. Bapak/Ibu ${user.name},
 
@@ -216,8 +210,8 @@ Tim Interfast Media`;
       Province: user.province,
       Package: user.package,
       Price: user.price,
-      'Installation Date': user.installation_date,
-      'Expired Date': user.expired_date,
+      'Installation Date': formatDateWIB(user.installation_date),
+      'Expired Date': formatDateWIB(user.expired_date),
       'Username Dial': user.username_dial,
       'Payment Status': user.payment_status,
       'User Status': user.user_status
@@ -260,8 +254,8 @@ Tim Interfast Media`;
           country: 'Indonesia',
           package: row.Package || 'Interfast Bronze',
           price: row.Price || 100000,
-          installation_date: row['Installation Date'] || new Date().toISOString().split('T')[0],
-          expired_date: row['Expired Date'] || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          installation_date: row['Installation Date'] || getTodayWIB(),
+          expired_date: row['Expired Date'] || getTodayWIB(),
           username_dial: row['Username Dial'] || '',
           payment_status: row['Payment Status'] || 'Paid',
           user_status: row['User Status'] || 'Active'
@@ -411,7 +405,7 @@ Tim Interfast Media`;
                     <TableCell className="w-48">{user.name}</TableCell>
                     <TableCell className="w-64 max-w-64 truncate" title={user.address}>{user.address}</TableCell>
                     <TableCell>{user.package}</TableCell>
-                    <TableCell className="w-36">{user.expired_date}</TableCell>
+                    <TableCell className="w-36">{formatDateWIB(user.expired_date)}</TableCell>
                     <TableCell>{getPaymentBadge(user.payment_status)}</TableCell>
                     <TableCell>{getStatusBadge(user.user_status)}</TableCell>
                     <TableCell>

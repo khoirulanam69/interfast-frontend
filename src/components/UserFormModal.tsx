@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { databaseService } from '@/services/databaseService';
 import { useToast } from '@/hooks/use-toast';
 import { mikrotikService } from '@/services/mikrotikService';
+import { toDateInputWIB } from '@/utils/dateUtils';
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -57,7 +58,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     const installDate = new Date(installationDate);
     const expiredDate = new Date(installDate);
     expiredDate.setDate(expiredDate.getDate() + 30);
-    return expiredDate.toISOString().split('T')[0];
+    return toDateInputWIB(expiredDate.toISOString());
   };
 
   // Check if payment should be unpaid (expired date within 3 days)
@@ -98,8 +99,8 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         package: user.package || 'Interfast Bronze',
         price: user.price || 100000,
         referred_by: user.referred_by || null,
-        installation_date: user.installation_date || '',
-        expired_date: user.expired_date || '',
+        installation_date: toDateInputWIB(user.installation_date || ''),
+        expired_date: toDateInputWIB(user.expired_date || ''),
         username_dial: user.username_dial || ''
       });
     } else {
