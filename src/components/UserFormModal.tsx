@@ -29,8 +29,8 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     province: '',
     country: 'Indonesia',
     phone: '',
-    package: 'Interfast Bronze' as 'Interfast Bronze' | 'Interfast Silver' | 'Interfast Gold' | 'Interfast Platinum',
-    price: 100000,
+    package: '',
+    price: 0,
     referred_by: null as string | null,
     installation_date: '',
     expired_date: '',
@@ -46,7 +46,16 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
   const fetchPackages = async () => {
     try {
       const data = await databaseService.getPackages();
-      setPackages(data || []);
+      const pkgList = data || [];
+      setPackages(pkgList);
+      // Set default package from first available package (only for new user)
+      if (!user && pkgList.length > 0 && !formData.package) {
+        setFormData(prev => ({
+          ...prev,
+          package: pkgList[0].name,
+          price: pkgList[0].price,
+        }));
+      }
     } catch (error) {
       console.error('Error fetching packages:', error);
     }
@@ -105,14 +114,15 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         province: user.province || '',
         country: user.country || 'Indonesia',
         phone: user.phone || '',
-        package: user.package || 'Interfast Bronze',
-        price: user.price || 100000,
+        package: user.package || '',
+        price: user.price || 0,
         referred_by: user.referred_by || null,
         installation_date: toDateInputWIB(user.installation_date || ''),
         expired_date: toDateInputWIB(user.expired_date || ''),
       });
     } else {
       // Reset form for new user - completely empty
+      const defaultPkg = packages.length > 0 ? packages[0] : null;
       setFormData({
         nik: '',
         name: '',
@@ -123,14 +133,14 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         province: '',
         country: 'Indonesia',
         phone: '',
-        package: 'Interfast Bronze',
-        price: 100000,
+        package: defaultPkg?.name || '',
+        price: defaultPkg?.price || 0,
         referred_by: null,
         installation_date: '',
         expired_date: '',
       });
     }
-  }, [user]);
+  }, [user, packages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,12 +249,10 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
 
   const handlePackageChange = (value: string) => {
     const selectedPackage = packages.find(pkg => pkg.name === value);
-    const price = selectedPackage ? selectedPackage.price : 100000;
-    
     setFormData({ 
       ...formData, 
-      package: value as 'Interfast Bronze' | 'Interfast Silver' | 'Interfast Gold' | 'Interfast Platinum', 
-      price: price
+      package: value, 
+      price: selectedPackage?.price || 0,
     });
   };
 

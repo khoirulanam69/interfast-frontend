@@ -50,7 +50,7 @@ export const mikrotikService = {
     }
   },
 
-  async regenerateUserCredentials(oldUsername: string, newUsername: string, newPassword: string, profile: string = 'Interfast Bronze') {
+  async regenerateUserCredentials(oldUsername: string, newUsername: string, newPassword: string, profile: string) {
     try {
       console.log(`Regenerating credentials from ${oldUsername} to ${newUsername} with profile ${profile}`);
       
@@ -86,7 +86,7 @@ export const mikrotikService = {
     }
   },
 
-  async createPPPSecret(usernameDialer: string, password: string, profile: string = 'Interfast Bronze') {
+  async createPPPSecret(usernameDialer: string, password: string, profile: string) {
     try {
       console.log(`Creating PPP secret for ${usernameDialer} with profile ${profile}`);
       

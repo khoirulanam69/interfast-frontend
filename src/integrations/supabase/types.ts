@@ -270,11 +270,7 @@ export type Database = {
       update_monthly_analytics: { Args: never; Returns: undefined }
     }
     Enums: {
-      package_type:
-        | "Interfast Bronze"
-        | "Interfast Silver"
-        | "Interfast Gold"
-        | "Interfast Platinum"
+      package_type: "starter" | "favorit" | "pro+" | "komunitas"
       payment_status: "Paid" | "Unpaid"
       transaction_category:
         | "subscription"
@@ -414,12 +410,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      package_type: [
-        "Interfast Bronze",
-        "Interfast Silver",
-        "Interfast Gold",
-        "Interfast Platinum",
-      ],
+      package_type: ["starter", "favorit", "pro+", "komunitas"],
       payment_status: ["Paid", "Unpaid"],
       transaction_category: [
         "subscription",
