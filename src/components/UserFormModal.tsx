@@ -34,6 +34,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
     referred_by: null as string | null,
     installation_date: '',
     expired_date: '',
+    username_dial: '',
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -119,6 +120,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         referred_by: user.referred_by || null,
         installation_date: toDateInputWIB(user.installation_date || ''),
         expired_date: toDateInputWIB(user.expired_date || ''),
+        username_dial: user.username_dial || '',
       });
     } else {
       // Reset form for new user - completely empty
@@ -138,6 +140,7 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
         referred_by: null,
         installation_date: '',
         expired_date: '',
+        username_dial: '',
       });
     }
   }, [user, packages]);
@@ -167,12 +170,43 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
 
       if (user) {
         // Update existing user
-        await databaseService.updateUser(user.id, dataToSubmit);
+        const usernameChanged = formData.username_dial !== user.username_dial;
         
-        toast({
-          title: "Success",
-          description: "User updated successfully",
-        });
+        const updateData: any = { ...dataToSubmit };
+        if (usernameChanged) {
+          updateData.username_dial = formData.username_dial;
+        }
+        
+        await databaseService.updateUser(user.id, updateData);
+
+        // If username changed, update MikroTik PPP Secret
+        if (usernameChanged) {
+          try {
+            const password = user.password_pppoe || generatePPPoEPassword(formData.nik);
+            await mikrotikService.regenerateUserCredentials(
+              user.username_dial,
+              formData.username_dial,
+              password,
+              formData.package.toLowerCase()
+            );
+            toast({
+              title: "Success",
+              description: `User updated and PPPoE username changed to ${formData.username_dial}`,
+            });
+          } catch (mikrotikError: any) {
+            console.error('MikroTik regenerate error:', mikrotikError);
+            toast({
+              title: "Partial Success",
+              description: `User updated but MikroTik sync failed: ${mikrotikError.message}`,
+              variant: "destructive",
+            });
+          }
+        } else {
+          toast({
+            title: "Success",
+            description: "User updated successfully",
+          });
+        }
       } else {
         // Create new user
         const paymentStatus = shouldSetUnpaid(formData.expired_date) ? 'Unpaid' : 'Paid';
@@ -348,6 +382,23 @@ const UserFormModal = ({ isOpen, onClose, user, onSave, users }: UserFormModalPr
               />
             </div>
             
+            {user && (
+              <div className="md:col-span-2">
+                <Label htmlFor="username_dial">PPPoE Username</Label>
+                <Input
+                  id="username_dial"
+                  value={formData.username_dial}
+                  onChange={(e) => setFormData({ ...formData, username_dial: e.target.value })}
+                  placeholder="PPPoE username"
+                />
+                {formData.username_dial !== user.username_dial && (
+                  <p className="text-xs text-destructive mt-1">
+                    ⚠ Username akan diubah di MikroTik dari "{user.username_dial}" ke "{formData.username_dial}"
+                  </p>
+                )}
+              </div>
+            )}
+
             <div>
               <Label htmlFor="package">Package</Label>
               <Select value={formData.package} onValueChange={handlePackageChange}>
