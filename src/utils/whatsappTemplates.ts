@@ -8,6 +8,8 @@ const WIB_TIMEZONE = 'Asia/Jakarta';
  */
 function getDaysUntilExpired(expiredDate: string): number {
   const now = new Date();
+
+  // Ambil tanggal hari ini dalam WIB (tanpa jam)
   const todayParts = new Intl.DateTimeFormat('en-CA', {
     timeZone: WIB_TIMEZONE,
     year: 'numeric',
@@ -19,10 +21,19 @@ function getDaysUntilExpired(expiredDate: string): number {
   const m = todayParts.find(p => p.type === 'month')!.value;
   const d = todayParts.find(p => p.type === 'day')!.value;
 
-  const todayMs = new Date(`${y}-${m}-${d}T00:00:00`).getTime();
-  const expiredMs = new Date(`${expiredDate.split('T')[0]}T00:00:00`).getTime();
+  // Tanggal hari ini (00:00 WIB)
+  const today = new Date(`${y}-${m}-${d}T00:00:00+07:00`);
 
-  return Math.ceil((expiredMs - todayMs) / (1000 * 60 * 60 * 24));
+  // Tanggal expired dianggap sebagai hari terakhir aktif (00:00 WIB)
+  const expired = new Date(`${expiredDate.split('T')[0]}T00:00:00+07:00`);
+
+  // Selisih hari (tanpa pembulatan ke atas)
+  const diffDays = Math.floor(
+    (expired.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  );
+
+  // +1 agar tanggal expired tetap dihitung sebagai hari aktif terakhir
+  return diffDays + 1;
 }
 
 /**
