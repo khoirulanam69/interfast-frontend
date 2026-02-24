@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 
 import { Search, Plus, Edit, Trash2, MessageSquare, Eye, Filter, Download, Upload, ArrowUpDown } from 'lucide-react';
 import { formatDateWIB, formatDateForMessage, toDateInputWIB, getTodayWIB } from '@/utils/dateUtils';
+import { buildExpiredNotificationMessage } from '@/utils/whatsappTemplates';
 import UserFormModal from './UserFormModal';
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
@@ -148,53 +149,9 @@ const UserManagement = () => {
 
 
   const sendWhatsAppMessage = (user: User) => {
-    const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0
-      }).format(amount);
-    };
-
-    const formatDate = formatDateForMessage;
-
-    const message = `Yth. Bapak/Ibu ${user.name},
-
-Kami informasikan bahwa masa aktif layanan internet Anda akan berakhir dalam 3 hari ke depan. Untuk menghindari gangguan layanan, segera lakukan pembayaran sebelum masa aktif berakhir.
-
-Tagihan layanan WiFi Anda untuk bulan berikutnya telah diterbitkan dengan rincian sebagai berikut:
-
-📶 Paket Layanan : ${user.package}
-💰 Jumlah Tagihan : ${formatCurrency(user.price)}
-📅 Jatuh Tempo : ${formatDate(user.expired_date)}
-
-Pembayaran dapat dilakukan melalui berbagai metode berikut:
-🔸 Dompet digital: ShopeePay, OVO, DANA
-🔸 Gerai retail: Indomaret, Alfamart
-🔸 Transfer bank: BCA, BRI, BNI, Mandiri
-
-Rekening Tujuan:
-🏦 Bank BCA
-💳 No. Rekening: 1240640712
-👤 a.n. Muhammad Khoirul Anam
-
-Atau pembayaran dapat dilakukan langsung ke alamat berikut:
-📞 WhatsApp: 0813-5733-3886
-📌 Alamat: Jl. Blambangan No.35 RT 01 / RW 05, Dampit, Kab. Malang
-🔗 Lokasi Google Maps: https://maps.app.goo.gl/UYwZdBPS8LKy9Gii6
-
-📢 Setelah melakukan pembayaran, mohon segera konfirmasi kepada admin untuk mempercepat proses verifikasi.
-
-Apabila Anda mengalami kendala atau memiliki keluhan terkait layanan internet selama satu bulan terakhir, silakan sampaikan kepada admin agar dapat segera ditindaklanjuti.
-
-Terima kasih atas kepercayaan Anda menggunakan layanan kami.
-
-Hormat kami,
-Tim Interfast Media`;
-
+    const message = buildExpiredNotificationMessage(user);
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${user.phone.replace(/\D/g, '')}?text=${encodedMessage}`;
-    
     window.open(whatsappUrl, '_blank');
   };
 
