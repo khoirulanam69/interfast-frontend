@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/config/api';
+import { getAuthHeaders } from '@/hooks/useAuth';
 
 // Database service for PostgreSQL API calls
 class DatabaseService {
@@ -12,6 +13,7 @@ class DatabaseService {
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
+        ...getAuthHeaders(),
         ...options?.headers,
       },
       ...options,

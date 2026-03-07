@@ -2,11 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import Login from "./pages/Login";
 import UserDetail from "./components/UserDetail";
 import UserManagement from "./components/UserManagement";
 import PackageManagement from "./components/PackageManagement";
@@ -14,6 +15,7 @@ import ReferralPage from "./components/ReferralPage";
 import Settings from "./components/Settings";
 import Analytics from "./components/Analytics";
 import FinancialManagement from "./components/FinancialManagement";
+import { useAuth } from "./hooks/useAuth";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +35,25 @@ const RedirectHandler = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Protected route wrapper
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -41,7 +62,15 @@ const App = () => (
       <BrowserRouter>
         <RedirectHandler>
           <Routes>
-            <Route path="/" element={<Layout />}>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
               <Route index element={<Index />} />
               <Route path="users" element={<UserManagement />} />
               <Route path="users/:nik" element={<UserDetail />} />

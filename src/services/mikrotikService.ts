@@ -1,4 +1,5 @@
 import { API_CONFIG, ApiResponse, handleApiError } from '@/config/api';
+import { getAuthHeaders } from '@/hooks/useAuth';
 
 interface MikroTikConfig {
   ip: string;
@@ -13,6 +14,7 @@ const apiCall = async (endpoint: string, options: RequestInit = {}): Promise<Api
     const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
+        ...getAuthHeaders(),
         ...options.headers,
       },
       ...options,

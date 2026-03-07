@@ -8,8 +8,6 @@ const WIB_TIMEZONE = 'Asia/Jakarta';
  */
 function getDaysUntilExpired(expiredDate: string): number {
   const now = new Date();
-
-  // Ambil tanggal hari ini dalam WIB (tanpa jam)
   const todayParts = new Intl.DateTimeFormat('en-CA', {
     timeZone: WIB_TIMEZONE,
     year: 'numeric',
@@ -21,19 +19,10 @@ function getDaysUntilExpired(expiredDate: string): number {
   const m = todayParts.find(p => p.type === 'month')!.value;
   const d = todayParts.find(p => p.type === 'day')!.value;
 
-  // Tanggal hari ini (00:00 WIB)
-  const today = new Date(`${y}-${m}-${d}T00:00:00+07:00`);
+  const todayMs = new Date(`${y}-${m}-${d}T00:00:00`).getTime();
+  const expiredMs = new Date(`${expiredDate.split('T')[0]}T00:00:00`).getTime();
 
-  // Tanggal expired dianggap sebagai hari terakhir aktif (00:00 WIB)
-  const expired = new Date(`${expiredDate.split('T')[0]}T00:00:00+07:00`);
-
-  // Selisih hari (tanpa pembulatan ke atas)
-  const diffDays = Math.floor(
-    (expired.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  // +1 agar tanggal expired tetap dihitung sebagai hari aktif terakhir
-  return diffDays + 1;
+  return Math.ceil((expiredMs - todayMs) / (1000 * 60 * 60 * 24));
 }
 
 /**
@@ -98,7 +87,7 @@ Rekening Tujuan:
 👤 a.n. Muhammad Khoirul Anam
 
 Atau pembayaran dapat dilakukan langsung ke alamat berikut:
-📞 WhatsApp: +62 896-0262-9248
+📞 WhatsApp: 0813-5733-3886
 📌 Alamat: Jl. Blambangan No.35 RT 01 / RW 05, Dampit, Kab. Malang
 🔗 Lokasi Google Maps: https://maps.app.goo.gl/UYwZdBPS8LKy9Gii6
 

@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Home, Users, Package, Settings, BarChart3, UserPlus, Wallet } from 'lucide-react';
+import { Menu, X, Home, Users, Package, Settings, BarChart3, UserPlus, Wallet, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
 const Layout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   const menuItems = [
     { name: 'Dashboard', icon: Home, path: '/' },
@@ -25,11 +26,16 @@ const Layout = () => {
     setSidebarOpen(false);
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-50 w-64 bg-card shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+        "fixed inset-y-0 left-0 z-50 w-64 bg-card shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex items-center justify-between h-16 px-4 border-b">
@@ -67,6 +73,24 @@ const Layout = () => {
             })}
           </div>
         </nav>
+
+        {/* Logout section */}
+        <div className="p-4 border-t">
+          {user && (
+            <div className="mb-3 px-2">
+              <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+            onClick={handleLogout}
+          >
+            <LogOut className="mr-3 h-5 w-5" />
+            Logout
+          </Button>
+        </div>
       </div>
 
       {/* Main content */}
@@ -83,7 +107,7 @@ const Layout = () => {
           </Button>
           
           <div className="flex items-center space-x-4">
-            <span className="text-sm font-medium text-primary">Admin</span>
+            <span className="text-sm font-medium text-primary">{user?.name || 'Admin'}</span>
           </div>
         </header>
 
