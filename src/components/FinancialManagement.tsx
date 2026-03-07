@@ -766,21 +766,34 @@ const FinancialManagement = () => {
                         </TableRow>
                       );
                     })}
-                    {/* Total Row */}
-                    <TableRow className="bg-muted font-bold">
-                      <TableCell>TOTAL</TableCell>
-                      <TableCell className="text-right text-green-600">
-                        {formatRupiah(monthlySummaries.reduce((sum, s) => sum + s.total_income, 0))}
-                      </TableCell>
-                      <TableCell className="text-right text-red-600">
-                        {formatRupiah(monthlySummaries.reduce((sum, s) => sum + s.total_expense, 0))}
-                      </TableCell>
-                      <TableCell className={`text-right ${
-                        monthlySummaries.reduce((sum, s) => sum + s.net_profit, 0) >= 0 ? 'text-blue-600' : 'text-orange-600'
-                      }`}>
-                        {formatRupiah(monthlySummaries.reduce((sum, s) => sum + s.net_profit, 0))}
-                      </TableCell>
-                    </TableRow>
+                    {/* Total Row - use integer cents precision to avoid floating-point errors */}
+                    {(() => {
+                      let totalIncomeCents = 0;
+                      let totalExpenseCents = 0;
+                      let totalProfitCents = 0;
+                      for (const s of monthlySummaries) {
+                        totalIncomeCents += Math.round(Number(s.total_income) * 100);
+                        totalExpenseCents += Math.round(Number(s.total_expense) * 100);
+                        totalProfitCents += Math.round(Number(s.net_profit) * 100);
+                      }
+                      const totalIncome = totalIncomeCents / 100;
+                      const totalExpense = totalExpenseCents / 100;
+                      const totalProfit = totalProfitCents / 100;
+                      return (
+                        <TableRow className="bg-muted font-bold">
+                          <TableCell>TOTAL</TableCell>
+                          <TableCell className="text-right text-green-600">
+                            {formatRupiah(totalIncome)}
+                          </TableCell>
+                          <TableCell className="text-right text-red-600">
+                            {formatRupiah(totalExpense)}
+                          </TableCell>
+                          <TableCell className={`text-right ${totalProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                            {formatRupiah(totalProfit)}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })()}
                   </TableBody>
                 </Table>
               </div>
