@@ -8,6 +8,7 @@ const WIB_TIMEZONE = 'Asia/Jakarta';
  */
 function getDaysUntilExpired(expiredDate: string): number {
   const now = new Date();
+  const expired = new Date(expiredDate);
 
   const todayStr = new Intl.DateTimeFormat('en-CA', {
     timeZone: WIB_TIMEZONE,
@@ -16,13 +17,17 @@ function getDaysUntilExpired(expiredDate: string): number {
     day: '2-digit',
   }).format(now);
 
-  const [y, m, d] = todayStr.split('-').map(Number);
-  const todayUtc = Date.UTC(y, m - 1, d);
+  const expiredStr = new Intl.DateTimeFormat('en-CA', {
+    timeZone: WIB_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(expired);
 
-  const [ey, em, ed] = expiredDate.split('T')[0].split('-').map(Number);
-  const expiredUtc = Date.UTC(ey, em - 1, ed);
+  const today = new Date(todayStr);
+  const exp = new Date(expiredStr);
 
-  return Math.floor((expiredUtc - todayUtc) / 86400000);
+  return Math.round((exp.getTime() - today.getTime()) / 86400000);
 }
 
 /**
