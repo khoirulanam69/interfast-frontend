@@ -46,7 +46,7 @@ const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
@@ -96,14 +96,12 @@ const UserManagement = () => {
       filtered = filtered.filter(user => user.payment_status === paymentFilter);
     }
 
-    // Apply sorting by expired date
-    if (sortOrder) {
-      filtered = [...filtered].sort((a, b) => {
-        const dateA = new Date(a.expired_date).getTime();
-        const dateB = new Date(b.expired_date).getTime();
-        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-      });
-    }
+    // Always sort by expired_date
+    filtered = [...filtered].sort((a, b) => {
+      const dateA = new Date(a.expired_date).getTime();
+      const dateB = new Date(b.expired_date).getTime();
+      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    });
 
     setFilteredUsers(filtered);
   };

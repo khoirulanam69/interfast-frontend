@@ -22,7 +22,7 @@ function getDaysUntilExpired(expiredDate: string): number {
   const todayMs = new Date(`${y}-${m}-${d}T00:00:00`).getTime();
   const expiredMs = new Date(`${expiredDate.split('T')[0]}T00:00:00`).getTime();
 
-  return Math.ceil((expiredMs - todayMs) / (1000 * 60 * 60 * 24));
+  return Math.round((expiredMs - todayMs) / (1000 * 60 * 60 * 24));
 }
 
 /**
