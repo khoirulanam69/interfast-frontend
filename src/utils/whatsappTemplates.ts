@@ -81,24 +81,17 @@ Tagihan layanan WiFi Anda untuk bulan berikutnya telah diterbitkan dengan rincia
 💰 Jumlah Tagihan : ${formatCurrency(user.price)}
 📅 Jatuh Tempo : ${formatDateForMessage(user.expired_date)}
 
-Pembayaran dapat dilakukan melalui berbagai metode berikut:
-🔸 Dompet digital: ShopeePay, OVO, DANA
-🔸 Gerai retail: Indomaret, Alfamart
-🔸 Transfer bank: BCA, BRI, BNI, Mandiri
-
 Rekening Tujuan:
-🏦 Bank BCA
-💳 No. Rekening: 1240640712
+🏦 Bank BNI
+💳 No. Rekening: 1274687322
 👤 a.n. Muhammad Khoirul Anam
 
 Atau pembayaran dapat dilakukan langsung ke alamat berikut:
-📞 WhatsApp: 0813-5733-3886
+📞 WhatsApp: 0896-0262-9248
 📌 Alamat: Jl. Blambangan No.35 RT 01 / RW 05, Dampit, Kab. Malang
 🔗 Lokasi Google Maps: https://maps.app.goo.gl/UYwZdBPS8LKy9Gii6
 
-📢 Setelah melakukan pembayaran, mohon segera konfirmasi kepada admin untuk mempercepat proses verifikasi.
-
-Apabila Anda mengalami kendala atau memiliki keluhan terkait layanan internet selama satu bulan terakhir, silakan sampaikan kepada admin agar dapat segera ditindaklanjuti.
+📢 Setelah melakukan pembayaran, mohon segera konfirmasi ke nomor diatas untuk mempercepat proses verifikasi.
 
 Terima kasih atas kepercayaan Anda menggunakan layanan kami.
 
